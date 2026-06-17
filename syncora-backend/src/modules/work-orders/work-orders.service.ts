@@ -33,10 +33,13 @@ export class WorkOrdersService {
     private notificationsService: NotificationsService,
   ) {}
 
-  async create(dto: CreateWorkOrderDto, userId: string) {
+  async create(dto: CreateWorkOrderDto, user: { id: string; role: string }) {
     // Hardcoded: Replace with DB sequence or dedicated counter table (risks collision on concurrent creates)
     const count = await this.prisma.workOrder.count();
     const orderNumber = `SYN-${1007 + count}`;
+
+    const customerId =
+      user.role === 'CUSTOMER' ? user.id : dto.customerId;
 
     let lat: number | undefined;
     let lng: number | undefined;
@@ -55,7 +58,7 @@ export class WorkOrdersService {
         title: dto.title,
         description: dto.description,
         priority: dto.priority ?? 'MEDIUM',
-        customerId: dto.customerId,
+        customerId,
         location: dto.location,
         latitude: dto.latitude ?? lat ?? null,
         longitude: dto.longitude ?? lng ?? null,
@@ -69,7 +72,7 @@ export class WorkOrdersService {
       data: {
         workOrderId: order.id,
         toStatus: 'PENDING',
-        changedById: userId,
+        changedById: user.id,
         note: 'Order created',
       },
     });
@@ -79,7 +82,7 @@ export class WorkOrdersService {
         action: 'WORK_ORDER_CREATED',
         entityType: 'WORK_ORDER',
         entityId: order.id,
-        userId,
+        userId: user.id,
         metadata: { orderNumber, title: dto.title },
       },
     });

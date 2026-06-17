@@ -82,6 +82,8 @@ async function createWorkOrder(data: {
   priority?: string;
   customerId: string;
   location?: string;
+  latitude?: number;
+  longitude?: number;
   scheduledStart?: string;
   scheduledEnd?: string;
 }): Promise<WorkOrder> {

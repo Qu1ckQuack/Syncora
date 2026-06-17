@@ -6,6 +6,7 @@ import { AlertsPanel } from '@/components/shared/AlertsPanel';
 import { TableSkeleton, CardSkeleton } from '@/components/shared/Skeleton';
 import { WorkOrderFilters } from '@/components/shared/WorkOrderFilters';
 import { StatusPill } from '@/components/shared/StatusPill';
+import { OrderCard, OrderCardSkeleton } from '@/components/shared/OrderCard';
 import { useAuthStore } from '@/lib/auth-store';
 import { useNotifications } from '@/lib/hooks/use-notifications';
 import { ClipboardList, Wrench, CheckCircle2, Clock, AlertTriangle } from 'lucide-react';
@@ -70,37 +71,49 @@ export default function OverviewPage() {
           />
 
           {isLoading ? (
-            <TableSkeleton rows={4} />
+            <>
+              <div className="sm:hidden space-y-2">
+                {Array.from({ length: 3 }).map((_, i) => <OrderCardSkeleton key={i} />)}
+              </div>
+              <div className="hidden sm:block">
+                <TableSkeleton rows={4} />
+              </div>
+            </>
           ) : !filtered.length ? (
             <div className="flex flex-col items-center justify-center py-16 text-center">
               <ClipboardList className="h-12 w-12 text-muted-foreground/50 mb-4" aria-hidden="true" />
               <p className="text-muted-foreground">No orders match your filters.</p>
             </div>
           ) : (
-            <div className="rounded-lg border border-border overflow-hidden">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border bg-muted/50">
-                    <th className="text-left px-4 py-3 font-medium text-muted-foreground">Order</th>
-                    <th className="text-left px-4 py-3 font-medium text-muted-foreground">Title</th>
-                    <th className="text-left px-4 py-3 font-medium text-muted-foreground hidden sm:table-cell">Status</th>
-                    <th className="text-left px-4 py-3 font-medium text-muted-foreground hidden md:table-cell">Priority</th>
-                    <th className="text-left px-4 py-3 font-medium text-muted-foreground hidden lg:table-cell">Assigned To</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.slice(0, 10).map((o) => (
-                    <tr key={o.id} className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors">
-                      <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{o.orderNumber}</td>
-                      <td className="px-4 py-3 font-medium">{o.title}</td>
-                      <td className="px-4 py-3 hidden sm:table-cell"><StatusPill status={o.status} /></td>
-                      <td className="px-4 py-3 hidden md:table-cell"><StatusPill status={o.priority} variant="priority" /></td>
-                      <td className="px-4 py-3 text-muted-foreground hidden lg:table-cell">{o.technician?.name ?? '—'}</td>
+            <>
+              <div className="sm:hidden space-y-2">
+                {filtered.slice(0, 10).map((o) => <OrderCard key={o.id} order={o} />)}
+              </div>
+              <div className="hidden sm:block rounded-lg border border-border overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-border bg-muted/50">
+                      <th className="text-left px-4 py-3 font-medium text-muted-foreground">Order</th>
+                      <th className="text-left px-4 py-3 font-medium text-muted-foreground">Title</th>
+                      <th className="text-left px-4 py-3 font-medium text-muted-foreground hidden sm:table-cell">Status</th>
+                      <th className="text-left px-4 py-3 font-medium text-muted-foreground hidden md:table-cell">Priority</th>
+                      <th className="text-left px-4 py-3 font-medium text-muted-foreground hidden lg:table-cell">Assigned To</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {filtered.slice(0, 10).map((o) => (
+                      <tr key={o.id} className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors">
+                        <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{o.orderNumber}</td>
+                        <td className="px-4 py-3 font-medium">{o.title}</td>
+                        <td className="px-4 py-3 hidden sm:table-cell"><StatusPill status={o.status} /></td>
+                        <td className="px-4 py-3 hidden md:table-cell"><StatusPill status={o.priority} variant="priority" /></td>
+                        <td className="px-4 py-3 text-muted-foreground hidden lg:table-cell">{o.technician?.name ?? '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
         </div>
 

@@ -1,16 +1,17 @@
 'use client';
 
-import { useState } from 'react';
 import { useAuthStore } from '@/lib/auth-store';
 import { useTheme } from 'next-themes';
+import { useNotificationPreferences, useUpdateNotificationPreferences } from '@/lib/hooks/use-notifications';
 import { cn } from '@/lib/utils';
-import { Bell, Shield, Moon, Sun, Mail, Smartphone } from 'lucide-react';
+import { Bell, Shield, Moon, Sun, Loader2 } from 'lucide-react';
 
-function Toggle({ label, description, checked, onChange }: {
+function Toggle({ label, description, checked, onChange, disabled }: {
   label: string;
   description: string;
   checked: boolean;
   onChange: (v: boolean) => void;
+  disabled?: boolean;
 }) {
   return (
     <label className="flex items-center justify-between py-3">
@@ -22,10 +23,12 @@ function Toggle({ label, description, checked, onChange }: {
         type="button"
         role="switch"
         aria-checked={checked}
-        onClick={() => onChange(!checked)}
+        onClick={() => !disabled && onChange(!checked)}
+        disabled={disabled}
         className={cn(
           'relative h-6 w-11 rounded-full transition-colors shrink-0',
           checked ? 'bg-syncora-500' : 'bg-muted-foreground/30',
+          disabled && 'opacity-50 cursor-not-allowed',
         )}
       >
         <span className={cn(
@@ -40,12 +43,15 @@ function Toggle({ label, description, checked, onChange }: {
 export default function SettingsPage() {
   const user = useAuthStore((s) => s.user);
   const { theme, setTheme } = useTheme();
-  const [emailNotifs, setEmailNotifs] = useState(true);
-  const [pushNotifs, setPushNotifs] = useState(true);
-  const [statusAlerts, setStatusAlerts] = useState(true);
-  const [assignmentAlerts, setAssignmentAlerts] = useState(true);
+  const { data: prefs, isLoading } = useNotificationPreferences();
+  const update = useUpdateNotificationPreferences();
 
   if (!user) return null;
+
+  const toggle = (field: 'email' | 'push' | 'status' | 'assignment') => {
+    if (!prefs) return;
+    update.mutate({ [field]: !prefs[field] });
+  };
 
   return (
     <div className="max-w-2xl space-y-8">
@@ -58,14 +64,16 @@ export default function SettingsPage() {
         <div className="flex items-center gap-3 px-4 py-3">
           <Bell className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
           <h2 className="text-sm font-semibold">Notification Preferences</h2>
+          {isLoading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
         </div>
 
         <div className="px-4">
           <Toggle
             label="Email Notifications"
             description="Receive updates via email"
-            checked={emailNotifs}
-            onChange={setEmailNotifs}
+            checked={prefs?.email ?? true}
+            onChange={() => toggle('email')}
+            disabled={update.isPending || isLoading}
           />
         </div>
 
@@ -73,8 +81,9 @@ export default function SettingsPage() {
           <Toggle
             label="Push Notifications"
             description="Receive updates on your device"
-            checked={pushNotifs}
-            onChange={setPushNotifs}
+            checked={prefs?.push ?? true}
+            onChange={() => toggle('push')}
+            disabled={update.isPending || isLoading}
           />
         </div>
 
@@ -82,8 +91,9 @@ export default function SettingsPage() {
           <Toggle
             label="Status Change Alerts"
             description="Get notified when order status changes"
-            checked={statusAlerts}
-            onChange={setStatusAlerts}
+            checked={prefs?.status ?? true}
+            onChange={() => toggle('status')}
+            disabled={update.isPending || isLoading}
           />
         </div>
 
@@ -91,8 +101,9 @@ export default function SettingsPage() {
           <Toggle
             label="Assignment Updates"
             description="Get notified when orders are assigned to you"
-            checked={assignmentAlerts}
-            onChange={setAssignmentAlerts}
+            checked={prefs?.assignment ?? true}
+            onChange={() => toggle('assignment')}
+            disabled={update.isPending || isLoading}
           />
         </div>
       </section>

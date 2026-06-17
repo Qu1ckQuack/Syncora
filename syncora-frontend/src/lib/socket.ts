@@ -37,9 +37,11 @@ export function useSocket() {
     const onAssigned = () => {
       qc.invalidateQueries({ queryKey: ['work-orders'] });
       qc.invalidateQueries({ queryKey: ['notifications'] });
+      qc.invalidateQueries({ queryKey: ['notifications', 'unread-count'] });
     };
     const onNotification = () => {
       qc.invalidateQueries({ queryKey: ['notifications'] });
+      qc.invalidateQueries({ queryKey: ['notifications', 'unread-count'] });
     };
     const onLocationUpdate = () => {
       qc.invalidateQueries({ queryKey: ['locations'] });

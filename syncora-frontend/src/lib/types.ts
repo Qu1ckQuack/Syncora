@@ -69,6 +69,15 @@ export interface Notification {
   workOrder?: { id: string; orderNumber: string; title: string } | null;
 }
 
+export interface NotificationPreference {
+  id: string;
+  userId: string;
+  email: boolean;
+  push: boolean;
+  status: boolean;
+  assignment: boolean;
+}
+
 export interface TechnicianLocation {
   id: string;
   technicianId: string;

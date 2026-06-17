@@ -2,6 +2,7 @@ import { Injectable, ForbiddenException, NotFoundException } from '@nestjs/commo
 import { NotificationType, Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { WsGateway } from '../ws/ws.gateway';
+import { UpdateNotificationPreferencesDto } from './dto/update-notification-preferences.dto';
 
 @Injectable()
 export class NotificationsService {
@@ -18,6 +19,13 @@ export class NotificationsService {
       },
       orderBy: { createdAt: 'desc' },
     });
+  }
+
+  async getUnreadCount(userId: string) {
+    const count = await this.prisma.notification.count({
+      where: { userId, read: false },
+    });
+    return { count };
   }
 
   async create(data: {
@@ -62,5 +70,25 @@ export class NotificationsService {
       data: { read: true },
     });
     return { message: 'All notifications marked as read' };
+  }
+
+  async getPreferences(userId: string) {
+    let prefs = await this.prisma.notificationPreference.findUnique({
+      where: { userId },
+    });
+    if (!prefs) {
+      prefs = await this.prisma.notificationPreference.create({
+        data: { userId },
+      });
+    }
+    return prefs;
+  }
+
+  async updatePreferences(userId: string, dto: UpdateNotificationPreferencesDto) {
+    await this.getPreferences(userId);
+    return this.prisma.notificationPreference.update({
+      where: { userId },
+      data: dto,
+    });
   }
 }

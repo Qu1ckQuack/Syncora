@@ -6,6 +6,7 @@ import { WorkOrderFilters } from '@/components/shared/WorkOrderFilters';
 import { StatusPill } from '@/components/shared/StatusPill';
 import { TableSkeleton } from '@/components/shared/Skeleton';
 import { EmptyState } from '@/components/shared/EmptyState';
+import { OrderCard, OrderCardSkeleton } from '@/components/shared/OrderCard';
 import { useAuthStore } from '@/lib/auth-store';
 import { ClipboardList, ChevronRight, Plus } from 'lucide-react';
 import Link from 'next/link';
@@ -51,7 +52,14 @@ export default function WorkOrdersPage() {
       />
 
       {isLoading ? (
-        <TableSkeleton rows={8} />
+        <>
+          <div className="sm:hidden space-y-2">
+            {Array.from({ length: 5 }).map((_, i) => <OrderCardSkeleton key={i} />)}
+          </div>
+          <div className="hidden sm:block">
+            <TableSkeleton rows={8} />
+          </div>
+        </>
       ) : !filtered.length ? (
         <EmptyState
           icon={ClipboardList}
@@ -59,38 +67,43 @@ export default function WorkOrdersPage() {
           description={searchQuery || selectedStatus !== 'ALL' ? 'Try adjusting your filters.' : 'Work orders will appear here once created.'}
         />
       ) : (
-        <div className="rounded-lg border border-border overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border bg-muted/50">
-                <th className="text-left px-4 py-3 font-medium text-muted-foreground">Order</th>
-                <th className="text-left px-4 py-3 font-medium text-muted-foreground">Title</th>
-                <th className="text-left px-4 py-3 font-medium text-muted-foreground hidden sm:table-cell">Status</th>
-                <th className="text-left px-4 py-3 font-medium text-muted-foreground hidden md:table-cell">Priority</th>
-                <th className="text-left px-4 py-3 font-medium text-muted-foreground hidden lg:table-cell">Assigned To</th>
-                <th className="text-left px-4 py-3 font-medium text-muted-foreground hidden xl:table-cell">Location</th>
-                <th className="w-10 px-4 py-3" />
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((o) => (
-                <tr key={o.id} className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors">
-                  <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{o.orderNumber}</td>
-                  <td className="px-4 py-3 font-medium">{o.title}</td>
-                  <td className="px-4 py-3 hidden sm:table-cell"><StatusPill status={o.status} /></td>
-                  <td className="px-4 py-3 hidden md:table-cell"><StatusPill status={o.priority} variant="priority" /></td>
-                  <td className="px-4 py-3 text-muted-foreground hidden lg:table-cell">{o.technician?.name ?? '—'}</td>
-                  <td className="px-4 py-3 text-muted-foreground hidden xl:table-cell">{o.location ?? '—'}</td>
-                  <td className="px-4 py-3">
-                    <Link href={`/dashboard/work-orders/${o.id}`} aria-label={`View ${o.orderNumber}`}>
-                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                    </Link>
-                  </td>
+        <>
+          <div className="sm:hidden space-y-2">
+            {filtered.map((o) => <OrderCard key={o.id} order={o} />)}
+          </div>
+          <div className="hidden sm:block rounded-lg border border-border overflow-hidden">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border bg-muted/50">
+                  <th className="text-left px-4 py-3 font-medium text-muted-foreground">Order</th>
+                  <th className="text-left px-4 py-3 font-medium text-muted-foreground">Title</th>
+                  <th className="text-left px-4 py-3 font-medium text-muted-foreground hidden sm:table-cell">Status</th>
+                  <th className="text-left px-4 py-3 font-medium text-muted-foreground hidden md:table-cell">Priority</th>
+                  <th className="text-left px-4 py-3 font-medium text-muted-foreground hidden lg:table-cell">Assigned To</th>
+                  <th className="text-left px-4 py-3 font-medium text-muted-foreground hidden xl:table-cell">Location</th>
+                  <th className="w-10 px-4 py-3" />
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {filtered.map((o) => (
+                  <tr key={o.id} className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors">
+                    <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{o.orderNumber}</td>
+                    <td className="px-4 py-3 font-medium">{o.title}</td>
+                    <td className="px-4 py-3 hidden sm:table-cell"><StatusPill status={o.status} /></td>
+                    <td className="px-4 py-3 hidden md:table-cell"><StatusPill status={o.priority} variant="priority" /></td>
+                    <td className="px-4 py-3 text-muted-foreground hidden lg:table-cell">{o.technician?.name ?? '—'}</td>
+                    <td className="px-4 py-3 text-muted-foreground hidden xl:table-cell">{o.location ?? '—'}</td>
+                    <td className="px-4 py-3">
+                      <Link href={`/dashboard/work-orders/${o.id}`} aria-label={`View ${o.orderNumber}`}>
+                        <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
     </div>
   );

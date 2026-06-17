@@ -238,11 +238,21 @@ async function main() {
     await prisma.auditLog.create({ data: entry });
   }
 
+  const allUsers = await prisma.user.findMany();
+  for (const u of allUsers) {
+    await prisma.notificationPreference.upsert({
+      where: { userId: u.id },
+      update: {},
+      create: { userId: u.id },
+    });
+  }
+
   console.log('Seed completed successfully');
   console.log(`  Users: ${await prisma.user.count()}`);
   console.log(`  Work Orders: ${await prisma.workOrder.count()}`);
   console.log(`  Status History: ${await prisma.statusHistory.count()}`);
   console.log(`  Notifications: ${await prisma.notification.count()}`);
+  console.log(`  Notification Preferences: ${await prisma.notificationPreference.count()}`);
   console.log(`  Audit Logs: ${await prisma.auditLog.count()}`);
 }
 

@@ -24,10 +24,11 @@ export class WorkOrdersController {
   constructor(private workOrdersService: WorkOrdersService) {}
 
   @Post()
-  @UseGuards(RolesGuard)
-  @Roles('MODERATOR')
-  create(@Body() dto: CreateWorkOrderDto, @CurrentUser('id') userId: string) {
-    return this.workOrdersService.create(dto, userId);
+  create(
+    @Body() dto: CreateWorkOrderDto,
+    @CurrentUser() user: { id: string; role: string },
+  ) {
+    return this.workOrdersService.create(dto, user);
   }
 
   @Get()
