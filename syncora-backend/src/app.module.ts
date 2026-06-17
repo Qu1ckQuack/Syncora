@@ -7,6 +7,7 @@ import { WorkOrdersModule } from './modules/work-orders/work-orders.module';
 import { UsersModule } from './modules/users/users.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { AnalyticsModule } from './modules/analytics/analytics.module';
+import { WsModule } from './modules/ws/ws.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { AnalyticsModule } from './modules/analytics/analytics.module';
     UsersModule,
     NotificationsModule,
     AnalyticsModule,
+    WsModule,
   ],
 })
 export class AppModule {}

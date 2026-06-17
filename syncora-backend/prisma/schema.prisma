@@ -13,14 +13,156 @@ enum Role {
   CUSTOMER
 }
 
-model User {
-  id           String   @id @default(uuid())
-  email        String   @unique
-  passwordHash String   @map("password_hash")
-  name         String
-  role         Role     @default(CUSTOMER)
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
+enum TechnicianStatus {
+  ONLINE
+  OFFLINE
+  BUSY
+}
 
+enum WorkOrderStatus {
+  PENDING
+  EN_ROUTE
+  IN_PROGRESS
+  COMPLETED
+  DELAYED
+  CANCELLED
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum NotificationType {
+  JOB_ASSIGNED
+  EN_ROUTE
+  DELAY_ALERT
+  JOB_COMPLETED
+  SYSTEM_ERROR
+}
+
+model User {
+  id               String           @id @default(uuid())
+  email            String           @unique
+  passwordHash     String           @map("password_hash")
+  name             String
+  role             Role             @default(CUSTOMER)
+  technicianStatus TechnicianStatus? @map("technician_status")
+  avatarUrl        String?          @map("avatar_url")
+  isActive         Boolean          @default(true) @map("is_active")
+  createdAt        DateTime         @default(now()) @map("created_at")
+  updatedAt        DateTime         @updatedAt @map("updated_at")
+
+  workOrdersAsCustomer   WorkOrder[]  @relation("customer_orders")
+  workOrdersAsTechnician WorkOrder[]  @relation("technician_orders")
+  statusChanges          StatusHistory[]
+  notifications          Notification[]
+  refreshTokens          RefreshToken[]
+  auditLogs              AuditLog[]
+
+  @@index([role])
   @@map("users")
+}
+
+model WorkOrder {
+  id             String          @id @default(uuid())
+  orderNumber    String          @unique @map("order_number")
+  title          String
+  description    String?
+  status         WorkOrderStatus @default(PENDING)
+  priority       Priority        @default(MEDIUM)
+  customerId     String          @map("customer_id")
+  technicianId   String?         @map("technician_id")
+  location       String?
+  latitude       Float?
+  longitude      Float?
+  scheduledStart DateTime?       @map("scheduled_start")
+  scheduledEnd   DateTime?       @map("scheduled_end")
+  actualStart    DateTime?       @map("actual_start")
+  actualEnd      DateTime?       @map("actual_end")
+  createdAt      DateTime        @default(now()) @map("created_at")
+  updatedAt      DateTime        @updatedAt @map("updated_at")
+
+  customer   User   @relation("customer_orders", fields: [customerId], references: [id])
+  technician User?  @relation("technician_orders", fields: [technicianId], references: [id])
+
+  statusHistory StatusHistory[]
+  notifications Notification[]
+
+  @@index([customerId])
+  @@index([technicianId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("work_orders")
+}
+
+model StatusHistory {
+  id           String           @id @default(uuid())
+  workOrderId  String           @map("work_order_id")
+  fromStatus   WorkOrderStatus? @map("from_status")
+  toStatus     WorkOrderStatus  @map("to_status")
+  changedById  String           @map("changed_by_id")
+  note         String?
+  createdAt    DateTime         @default(now()) @map("created_at")
+
+  workOrder WorkOrder @relation(fields: [workOrderId], references: [id])
+  changedBy User      @relation(fields: [changedById], references: [id])
+
+  @@index([workOrderId])
+  @@index([createdAt])
+  @@map("status_history")
+}
+
+model Notification {
+  id          String           @id @default(uuid())
+  userId      String           @map("user_id")
+  type        NotificationType
+  title       String
+  message     String
+  read        Boolean          @default(false)
+  workOrderId String?          @map("work_order_id")
+  createdAt   DateTime         @default(now()) @map("created_at")
+
+  user      User       @relation(fields: [userId], references: [id])
+  workOrder WorkOrder? @relation(fields: [workOrderId], references: [id])
+
+  @@index([userId])
+  @@index([read])
+  @@index([createdAt])
+  @@map("notifications")
+}
+
+model RefreshToken {
+  id             String   @id @default(uuid())
+  token          String   @unique
+  userId         String   @map("user_id")
+  expiresAt      DateTime @map("expires_at")
+  revoked        Boolean  @default(false)
+  replacedByToken String? @map("replaced_by_token")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([token])
+  @@map("refresh_tokens")
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  action     String
+  entityType String   @map("entity_type")
+  entityId   String   @map("entity_id")
+  userId     String?  @map("user_id")
+  metadata   Json?
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([entityType, entityId])
+  @@index([createdAt])
+  @@map("audit_logs")
 }

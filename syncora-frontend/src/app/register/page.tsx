@@ -2,9 +2,13 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { AlertCircle } from 'lucide-react';
+import { useAuthStore } from '@/lib/auth-store';
 
 export default function RegisterPage() {
+  const router = useRouter();
+  const register = useAuthStore((s) => s.register);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -14,19 +18,10 @@ export default function RegisterPage() {
     e.preventDefault();
     setError('');
     try {
-      const res = await fetch('/api/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, password }),
-      });
-      if (!res.ok) {
-        const data = await res.json();
-        setError(data.message || 'Registration failed');
-        return;
-      }
-      window.location.href = '/login';
-    } catch {
-      setError('Unable to connect. Please try again.');
+      await register(name, email, password);
+      router.push('/dashboard/overview');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Registration failed');
     }
   };
 

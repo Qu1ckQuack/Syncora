@@ -1,6 +1,8 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { IoAdapter } from '@nestjs/platform-socket.io';
+import cookieParser from 'cookie-parser';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
@@ -10,9 +12,13 @@ async function bootstrap() {
   const logger = new Logger('Bootstrap');
 
   app.enableCors({
+    // Hardcoded: Replace fallback with production domain from env
     origin: configService.get<string>('FRONTEND_URL', 'http://localhost:3000'),
     credentials: true,
   });
+
+  app.use(cookieParser());
+  app.useWebSocketAdapter(new IoAdapter(app));
 
   app.setGlobalPrefix('api');
 
@@ -24,6 +30,7 @@ async function bootstrap() {
     }),
   );
 
+  // Hardcoded: Use env-var PORT in production deployments (Docker, cloud), 3001 is dev default
   const port = configService.get<number>('PORT', 3001);
   await app.listen(port);
   logger.log(`Application running on http://localhost:${port}`);

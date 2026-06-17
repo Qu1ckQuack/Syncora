@@ -2,9 +2,13 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { AlertCircle } from 'lucide-react';
+import { useAuthStore } from '@/lib/auth-store';
 
 export default function LoginPage() {
+  const router = useRouter();
+  const login = useAuthStore((s) => s.login);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -13,20 +17,10 @@ export default function LoginPage() {
     e.preventDefault();
     setError('');
     try {
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-        credentials: 'include',
-      });
-      if (!res.ok) {
-        const data = await res.json();
-        setError(data.message || 'Login failed');
-        return;
-      }
-      window.location.href = '/dashboard/overview';
-    } catch {
-      setError('Unable to connect. Please try again.');
+      await login(email, password);
+      router.push('/dashboard/overview');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Login failed');
     }
   };
 
@@ -116,7 +110,8 @@ export default function LoginPage() {
         </p>
 
         <div className="text-center text-xs text-muted-foreground">
-          <p>Demo: moderator@syncora.dev / technician@syncora.dev / customer@syncora.dev</p>
+          {/* Hardcoded: Remove demo account hints in production */}
+          <p>Demo: moderator@syncora.dev / tech1@syncora.dev / customer1@syncora.dev</p>
         </div>
       </div>
     </div>
