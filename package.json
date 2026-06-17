@@ -1,0 +1,27 @@
+{
+  "name": "syncora",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Syncora — Real-time work-order management platform",
+  "scripts": {
+    "lint:backend": "cd syncora-backend && npm run lint",
+    "lint:frontend": "cd syncora-frontend && npm run lint",
+    "lint": "npm run lint:backend && npm run lint:frontend",
+    "prepare": "husky"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "husky": "^9.1.7",
+    "lint-staged": "^17.0.7"
+  },
+  "lint-staged": {
+    "syncora-backend/src/**/*.ts": [
+      "cd syncora-backend && npx eslint --fix"
+    ],
+    "syncora-frontend/src/**/*.{ts,tsx}": [
+      "cd syncora-frontend && npx eslint --fix"
+    ]
+  }
+}

@@ -1,0 +1,94 @@
+@import "tailwindcss";
+
+@theme inline {
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-card: hsl(var(--card));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-accent: hsl(var(--accent));
+  --color-border: hsl(var(--border));
+
+  --color-sidebar: hsl(var(--sidebar));
+  --color-sidebar-border: hsl(var(--sidebar-border));
+  --color-topbar: hsl(var(--topbar));
+  --color-topbar-border: hsl(var(--topbar-border));
+
+  --color-syncora-50: #f5f0ff;
+  --color-syncora-100: #ede5ff;
+  --color-syncora-200: #ddd0ff;
+  --color-syncora-300: #c4abff;
+  --color-syncora-400: #a67dff;
+  --color-syncora-500: #7b2ff7;
+  --color-syncora-600: #6b21e0;
+  --color-syncora-700: #5b19c5;
+  --color-syncora-800: #4c17a1;
+  --color-syncora-900: #401583;
+  --color-syncora-950: #25085c;
+
+  --color-status-active: var(--color-status-active-val);
+  --color-status-pending: var(--color-status-pending-val);
+  --color-status-transit: var(--color-status-transit-val);
+  --color-status-done: var(--color-status-done-val);
+  --color-status-alert: var(--color-status-alert-val);
+  --color-status-offline: var(--color-status-offline-val);
+
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+:root {
+  --background: 0 0% 100%;
+  --foreground: 240 10% 3.9%;
+  --card: 0 0% 100%;
+  --muted: 240 4.8% 95.9%;
+  --muted-foreground: 240 3.8% 46.1%;
+  --accent: 240 4.8% 95.9%;
+  --border: 240 5.9% 90%;
+
+  --sidebar: 0 0% 100%;
+  --sidebar-border: 240 5.9% 90%;
+  --topbar: 0 0% 100%;
+  --topbar-border: 240 5.9% 90%;
+
+  --color-status-active-val: #059669;
+  --color-status-pending-val: #d97706;
+  --color-status-transit-val: #2563eb;
+  --color-status-done-val: #16a34a;
+  --color-status-alert-val: #dc2626;
+  --color-status-offline-val: #9ca3af;
+}
+
+.dark {
+  --background: 240 10% 3.9%;
+  --foreground: 0 0% 98%;
+  --card: 240 10% 3.9%;
+  --muted: 240 3.7% 15.9%;
+  --muted-foreground: 240 5% 64.9%;
+  --accent: 240 3.7% 15.9%;
+  --border: 240 3.7% 15.9%;
+
+  --sidebar: 240 10% 3.9%;
+  --sidebar-border: 240 3.7% 15.9%;
+  --topbar: 240 10% 3.9%;
+  --topbar-border: 240 3.7% 15.9%;
+
+  --color-status-active-val: #34d399;
+  --color-status-pending-val: #fbbf24;
+  --color-status-transit-val: #60a5fa;
+  --color-status-done-val: #4ade80;
+  --color-status-alert-val: #f87171;
+  --color-status-offline-val: #6b7280;
+}
+
+body {
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+@layer base {
+  * {
+    border-color: hsl(var(--border));
+  }
+}

@@ -1,0 +1,23 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: syncora-db
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: syncora
+      POSTGRES_PASSWORD: syncora_secret
+      POSTGRES_DB: syncora
+    volumes:
+      - syncora_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U syncora -d syncora"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  syncora_pgdata:
