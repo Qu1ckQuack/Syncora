@@ -41,6 +41,9 @@ export function useSocket() {
     const onNotification = () => {
       qc.invalidateQueries({ queryKey: ['notifications'] });
     };
+    const onLocationUpdate = () => {
+      qc.invalidateQueries({ queryKey: ['locations'] });
+    };
 
     socket.on('connect', onConnect);
     socket.on('disconnect', onDisconnect);
@@ -49,6 +52,7 @@ export function useSocket() {
     socket.on('workOrder.statusChanged', onStatusChanged);
     socket.on('workOrder.assigned', onAssigned);
     socket.on('notification.new', onNotification);
+    socket.on('location.update', onLocationUpdate);
 
     if (socket.connected) setStatus('connected');
 
@@ -60,6 +64,7 @@ export function useSocket() {
       socket.off('workOrder.statusChanged', onStatusChanged);
       socket.off('workOrder.assigned', onAssigned);
       socket.off('notification.new', onNotification);
+      socket.off('location.update', onLocationUpdate);
     };
   }, [qc, addToast, handleStatusChange]);
 

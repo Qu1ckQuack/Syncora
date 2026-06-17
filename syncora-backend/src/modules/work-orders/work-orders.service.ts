@@ -3,6 +3,7 @@ import {
   NotFoundException,
   BadRequestException,
   ForbiddenException,
+  Logger,
 } from '@nestjs/common';
 import { WorkOrderStatus, NotificationType } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -24,6 +25,8 @@ const VALID_TRANSITIONS: Record<WorkOrderStatus, WorkOrderStatus[]> = {
 
 @Injectable()
 export class WorkOrdersService {
+  private readonly logger = new Logger(WorkOrdersService.name);
+
   constructor(
     private prisma: PrismaService,
     private wsGateway: WsGateway,
@@ -35,6 +38,17 @@ export class WorkOrdersService {
     const count = await this.prisma.workOrder.count();
     const orderNumber = `SYN-${1007 + count}`;
 
+    let lat: number | undefined;
+    let lng: number | undefined;
+
+    if (dto.location && !dto.latitude && !dto.longitude) {
+      const coords = await this.geocodeLocation(dto.location);
+      if (coords) {
+        lat = coords.lat;
+        lng = coords.lng;
+      }
+    }
+
     const order = await this.prisma.workOrder.create({
       data: {
         orderNumber,
@@ -43,6 +57,8 @@ export class WorkOrdersService {
         priority: dto.priority ?? 'MEDIUM',
         customerId: dto.customerId,
         location: dto.location,
+        latitude: dto.latitude ?? lat ?? null,
+        longitude: dto.longitude ?? lng ?? null,
         scheduledStart: dto.scheduledStart ? new Date(dto.scheduledStart) : null,
         scheduledEnd: dto.scheduledEnd ? new Date(dto.scheduledEnd) : null,
         status: 'PENDING',
@@ -117,6 +133,17 @@ export class WorkOrdersService {
     const order = await this.prisma.workOrder.findUnique({ where: { id } });
     if (!order) throw new NotFoundException('Work order not found');
 
+    let lat: number | undefined;
+    let lng: number | undefined;
+
+    if (dto.location && dto.location !== order.location && !dto.latitude && !dto.longitude) {
+      const coords = await this.geocodeLocation(dto.location);
+      if (coords) {
+        lat = coords.lat;
+        lng = coords.lng;
+      }
+    }
+
     const updated = await this.prisma.workOrder.update({
       where: { id },
       data: {
@@ -124,6 +151,8 @@ export class WorkOrdersService {
         description: dto.description,
         priority: dto.priority,
         location: dto.location,
+        latitude: dto.latitude ?? (lat ?? order.latitude),
+        longitude: dto.longitude ?? (lng ?? order.longitude),
         scheduledStart: dto.scheduledStart ? new Date(dto.scheduledStart) : undefined,
         scheduledEnd: dto.scheduledEnd ? new Date(dto.scheduledEnd) : undefined,
       },
@@ -327,6 +356,22 @@ export class WorkOrdersService {
         return 'Job Cancelled';
       default:
         return 'Status Updated';
+    }
+  }
+
+  private async geocodeLocation(location: string): Promise<{ lat: number; lng: number } | null> {
+    try {
+      const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(location)}&format=json&limit=1`;
+      const res = await fetch(url, {
+        headers: { 'User-Agent': 'Syncora/1.0' },
+      });
+      if (!res.ok) return null;
+      const data = await res.json();
+      if (!data || data.length === 0) return null;
+      return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+    } catch (err) {
+      this.logger.warn(`Nominatim geocoding failed for "${location}": ${err}`);
+      return null;
     }
   }
 }

@@ -33,6 +33,8 @@ export interface WorkOrder {
   technicianId: string | null;
   customerId: string | null;
   location: string | null;
+  latitude: number | null;
+  longitude: number | null;
   scheduledStart: string | null;
   scheduledEnd: string | null;
   actualStart: string | null;
@@ -65,4 +67,15 @@ export interface Notification {
   workOrderId: string | null;
   createdAt: string;
   workOrder?: { id: string; orderNumber: string; title: string } | null;
+}
+
+export interface TechnicianLocation {
+  id: string;
+  technicianId: string;
+  workOrderId: string | null;
+  latitude: number;
+  longitude: number;
+  accuracy: number | null;
+  timestamp: string;
+  technician?: { id: string; name: string };
 }

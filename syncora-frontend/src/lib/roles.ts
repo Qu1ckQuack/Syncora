@@ -4,6 +4,7 @@ import {
   Users,
   Settings,
   UserCircle,
+  Map,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -30,6 +31,12 @@ export const navItems: NavItem[] = [
     icon: ClipboardList,
     roles: ['MODERATOR', 'TECHNICIAN', 'CUSTOMER'],
     badge: 'pending',
+  },
+  {
+    label: 'Map',
+    href: '/dashboard/map',
+    icon: Map,
+    roles: ['MODERATOR', 'TECHNICIAN', 'CUSTOMER'],
   },
   {
     label: 'People',

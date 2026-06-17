@@ -57,6 +57,7 @@ model User {
 
   workOrdersAsCustomer   WorkOrder[]  @relation("customer_orders")
   workOrdersAsTechnician WorkOrder[]  @relation("technician_orders")
+  technicianLocations   TechnicianLocation[]
   statusChanges          StatusHistory[]
   notifications          Notification[]
   refreshTokens          RefreshToken[]
@@ -88,8 +89,9 @@ model WorkOrder {
   customer   User   @relation("customer_orders", fields: [customerId], references: [id])
   technician User?  @relation("technician_orders", fields: [technicianId], references: [id])
 
-  statusHistory StatusHistory[]
-  notifications Notification[]
+  statusHistory       StatusHistory[]
+  notifications       Notification[]
+  technicianLocations TechnicianLocation[]
 
   @@index([customerId])
   @@index([technicianId])
@@ -148,6 +150,22 @@ model RefreshToken {
   @@index([userId])
   @@index([token])
   @@map("refresh_tokens")
+}
+
+model TechnicianLocation {
+  id            String   @id @default(uuid())
+  technicianId  String   @map("technician_id")
+  workOrderId   String?  @map("work_order_id")
+  latitude      Float
+  longitude     Float
+  accuracy      Float?
+  timestamp     DateTime @default(now())
+
+  technician User      @relation(fields: [technicianId], references: [id])
+  workOrder  WorkOrder? @relation(fields: [workOrderId], references: [id])
+
+  @@index([technicianId, timestamp])
+  @@map("technician_locations")
 }
 
 model AuditLog {

@@ -1,13 +1,15 @@
 import {
   WebSocketGateway,
   WebSocketServer,
+  SubscribeMessage,
   OnGatewayConnection,
   OnGatewayDisconnect,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
-import { Logger, UnauthorizedException } from '@nestjs/common';
+import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as jwt from 'jsonwebtoken';
+import { PrismaService } from '../../prisma/prisma.service';
 
 interface JwtPayload {
   sub: string;
@@ -17,6 +19,7 @@ interface JwtPayload {
 
 @WebSocketGateway({
   cors: {
+    // Hardcoded: Remove fallback in production — FRONTEND_URL must be set in env
     origin: process.env.FRONTEND_URL || 'http://localhost:3000',
     credentials: true,
   },
@@ -27,7 +30,10 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   private readonly logger = new Logger(WsGateway.name);
 
-  constructor(private configService: ConfigService) {}
+  constructor(
+    private configService: ConfigService,
+    private prisma: PrismaService,
+  ) {}
 
   private parseCookies(cookieHeader: string | undefined): Record<string, string> {
     const cookies: Record<string, string> = {};
@@ -50,6 +56,7 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
 
     try {
+      // Hardcoded: Remove fallback in production — JWT_SECRET must be set in env
       const secret = this.configService.get<string>('JWT_SECRET', 'dev-jwt-secret');
       const payload = jwt.verify(token, secret) as JwtPayload;
       client.data.user = { id: payload.sub, email: payload.email, role: payload.role };
@@ -66,6 +73,37 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const user = client.data.user;
     if (user) {
       this.logger.log(`Socket disconnected: ${user.email}`);
+    }
+  }
+
+  @SubscribeMessage('location.update')
+  async handleLocationUpdate(
+    client: Socket,
+    payload: { workOrderId?: string; latitude: number; longitude: number; accuracy?: number },
+  ) {
+    const user = client.data.user;
+    if (!user || user.role !== 'TECHNICIAN') return;
+
+    const location = await this.prisma.technicianLocation.create({
+      data: {
+        technicianId: user.id,
+        workOrderId: payload.workOrderId ?? null,
+        latitude: payload.latitude,
+        longitude: payload.longitude,
+        accuracy: payload.accuracy ?? null,
+      },
+    });
+
+    this.broadcast('location.update', location);
+
+    if (payload.workOrderId) {
+      const order = await this.prisma.workOrder.findUnique({
+        where: { id: payload.workOrderId },
+        select: { customerId: true },
+      });
+      if (order) {
+        this.emitToUser(order.customerId, 'location.update', location);
+      }
     }
   }
 

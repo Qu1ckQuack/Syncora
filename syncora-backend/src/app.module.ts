@@ -8,6 +8,7 @@ import { UsersModule } from './modules/users/users.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { WsModule } from './modules/ws/ws.module';
+import { LocationModule } from './modules/locations/location.module';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { WsModule } from './modules/ws/ws.module';
     NotificationsModule,
     AnalyticsModule,
     WsModule,
+    LocationModule,
   ],
 })
 export class AppModule {}

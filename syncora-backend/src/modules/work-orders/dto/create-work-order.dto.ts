@@ -27,4 +27,10 @@ export class CreateWorkOrderDto {
   @IsString()
   @IsOptional()
   scheduledEnd?: string;
+
+  @IsOptional()
+  latitude?: number;
+
+  @IsOptional()
+  longitude?: number;
 }
