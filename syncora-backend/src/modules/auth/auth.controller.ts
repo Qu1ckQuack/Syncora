@@ -23,14 +23,20 @@ export class AuthController {
 
   @Post('register')
   @Throttle({ default: { ttl: 60000, limit: 5 } })
-  async register(@Body() dto: RegisterDto, @Res({ passthrough: true }) res: Response) {
+  async register(
+    @Body() dto: RegisterDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
     return this.authService.register(dto, res);
   }
 
   @Post('login')
   @HttpCode(HttpStatus.OK)
   @Throttle({ default: { ttl: 60000, limit: 10 } })
-  async login(@Body() dto: LoginDto, @Res({ passthrough: true }) res: Response) {
+  async login(
+    @Body() dto: LoginDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
     return this.authService.login(dto, res);
   }
 

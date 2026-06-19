@@ -1,4 +1,8 @@
-import { Injectable, ForbiddenException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import { NotificationType, Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { WsGateway } from '../ws/ws.gateway';
@@ -54,9 +58,12 @@ export class NotificationsService {
   }
 
   async markRead(id: string, userId: string) {
-    const notification = await this.prisma.notification.findUnique({ where: { id } });
+    const notification = await this.prisma.notification.findUnique({
+      where: { id },
+    });
     if (!notification) throw new NotFoundException('Notification not found');
-    if (notification.userId !== userId) throw new ForbiddenException('Access denied');
+    if (notification.userId !== userId)
+      throw new ForbiddenException('Access denied');
 
     return this.prisma.notification.update({
       where: { id },
@@ -84,7 +91,10 @@ export class NotificationsService {
     return prefs;
   }
 
-  async updatePreferences(userId: string, dto: UpdateNotificationPreferencesDto) {
+  async updatePreferences(
+    userId: string,
+    dto: UpdateNotificationPreferencesDto,
+  ) {
     await this.getPreferences(userId);
     return this.prisma.notificationPreference.update({
       where: { userId },

@@ -1,6 +1,7 @@
 'use client';
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useConnectionStore } from '@/lib/use-connection-status';
 import type { WorkOrder } from '@/lib/types';
 
 async function fetchWorkOrders(): Promise<WorkOrder[]> {
@@ -52,9 +53,13 @@ async function assignTechnician({
 }
 
 export function useWorkOrders() {
+  const wsStatus = useConnectionStore((s) => s.status);
+  const shouldPoll = wsStatus !== 'connected';
+
   return useQuery({
     queryKey: ['work-orders'],
     queryFn: fetchWorkOrders,
+    refetchInterval: shouldPoll ? 15_000 : false,
   });
 }
 

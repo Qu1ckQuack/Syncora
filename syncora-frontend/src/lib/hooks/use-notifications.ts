@@ -1,6 +1,7 @@
 'use client';
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useConnectionStore } from '@/lib/use-connection-status';
 import type { Notification, NotificationPreference } from '@/lib/types';
 
 async function fetchNotifications(): Promise<Notification[]> {
@@ -44,19 +45,25 @@ async function updatePreferences(data: Partial<NotificationPreference>): Promise
 }
 
 export function useNotifications() {
+  const wsStatus = useConnectionStore((s) => s.status);
+  const shouldPoll = wsStatus !== 'connected';
+
   return useQuery({
     queryKey: ['notifications'],
     queryFn: fetchNotifications,
-    refetchInterval: false,
+    refetchInterval: shouldPoll ? 15_000 : false,
     staleTime: 60000,
   });
 }
 
 export function useUnreadCount() {
+  const wsStatus = useConnectionStore((s) => s.status);
+  const shouldPoll = wsStatus !== 'connected';
+
   return useQuery({
     queryKey: ['notifications', 'unread-count'],
     queryFn: fetchUnreadCount,
-    refetchInterval: 30000,
+    refetchInterval: shouldPoll ? 15_000 : 30_000,
     staleTime: 10000,
   });
 }

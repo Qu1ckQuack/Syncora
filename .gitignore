@@ -27,3 +27,9 @@ yarn-error.log*
 
 # Docker
 docker-data/
+
+# Logs
+*.log
+server-err.log
+server.log
+.opencode/

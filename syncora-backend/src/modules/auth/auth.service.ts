@@ -30,7 +30,11 @@ export class AuthService {
     return createHash('sha256').update(token).digest('hex');
   }
 
-  private generateAccessToken(user: { id: string; email: string; role: string }): string {
+  private generateAccessToken(user: {
+    id: string;
+    email: string;
+    role: string;
+  }): string {
     return this.jwtService.sign(
       { sub: user.id, email: user.email, role: user.role },
       {
@@ -174,7 +178,11 @@ export class AuthService {
       where: { token: hashed },
     });
 
-    if (!storedToken || storedToken.revoked || storedToken.expiresAt < new Date()) {
+    if (
+      !storedToken ||
+      storedToken.revoked ||
+      storedToken.expiresAt < new Date()
+    ) {
       throw new UnauthorizedException('Invalid or expired refresh token');
     }
 

@@ -24,6 +24,8 @@ export class WorkOrdersController {
   constructor(private workOrdersService: WorkOrdersService) {}
 
   @Post()
+  @UseGuards(RolesGuard)
+  @Roles('MODERATOR', 'CUSTOMER')
   create(
     @Body() dto: CreateWorkOrderDto,
     @CurrentUser() user: { id: string; role: string },
@@ -38,7 +40,10 @@ export class WorkOrdersController {
 
   @Get(':id')
   @UseGuards(WorkOrderOwnershipGuard)
-  findOne(@Param('id') id: string, @CurrentUser() user: { id: string; role: string }) {
+  findOne(
+    @Param('id') id: string,
+    @CurrentUser() user: { id: string; role: string },
+  ) {
     return this.workOrdersService.findOne(id, user);
   }
 
@@ -65,6 +70,7 @@ export class WorkOrdersController {
   }
 
   @Patch(':id/status')
+  @UseGuards(WorkOrderOwnershipGuard)
   updateStatus(
     @Param('id') id: string,
     @Body() dto: UpdateStatusDto,

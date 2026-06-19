@@ -22,11 +22,16 @@ export class LocationService {
     });
   }
 
-  async getHistoryByTechnician(technicianId: string, from?: string, to?: string) {
+  async getHistoryByTechnician(
+    technicianId: string,
+    from?: string,
+    to?: string,
+  ) {
     const where: Record<string, unknown> = { technicianId };
     if (from || to) {
       where.timestamp = {};
-      if (from) (where.timestamp as Record<string, unknown>).gte = new Date(from);
+      if (from)
+        (where.timestamp as Record<string, unknown>).gte = new Date(from);
       if (to) (where.timestamp as Record<string, unknown>).lte = new Date(to);
     }
     return this.prisma.technicianLocation.findMany({
@@ -40,6 +45,13 @@ export class LocationService {
     return this.prisma.technicianLocation.findFirst({
       where: { workOrderId },
       orderBy: { timestamp: 'desc' },
+    });
+  }
+
+  async getWorkOrderOwner(workOrderId: string) {
+    return this.prisma.workOrder.findUnique({
+      where: { id: workOrderId },
+      select: { customerId: true },
     });
   }
 }

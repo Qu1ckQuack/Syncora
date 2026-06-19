@@ -3,11 +3,13 @@
 import { useEffect, useState, useCallback } from 'react';
 import { getSocket, disconnectSocket } from './socket-client';
 import { useToastStore } from './toast-store';
+import { useConnectionStore } from './use-connection-status';
 import { useQueryClient } from '@tanstack/react-query';
+import { useAuthStore } from './auth-store';
 
 type SocketStatus = 'connected' | 'disconnected' | 'reconnecting';
 
-export function useSocket() {
+export function useSocket(onEvent?: () => void) {
   const [status, setStatus] = useState<SocketStatus>('disconnected');
   const qc = useQueryClient();
   const addToast = useToastStore((s) => s.addToast);
@@ -19,33 +21,51 @@ export function useSocket() {
     }
   }, [addToast]);
 
+  const notify = useCallback(() => {
+    onEvent?.();
+  }, [onEvent]);
+
+  const setConnectionStatus = useConnectionStore((s) => s.setStatus);
+
   useEffect(() => {
     const socket = getSocket();
 
     const onConnect = () => {
       setStatus('connected');
+      setConnectionStatus('connected');
       addToast({ type: 'success', title: 'Connected', duration: 2000 });
     };
-    const onDisconnect = () => setStatus('disconnected');
-    const onReconnectAttempt = () => handleStatusChange('reconnecting');
+    const onDisconnect = () => {
+      setStatus('disconnected');
+      setConnectionStatus('disconnected');
+    };
+    const onReconnectAttempt = () => {
+      handleStatusChange('reconnecting');
+      setConnectionStatus('reconnecting');
+    };
     const onReconnect = () => {
       setStatus('connected');
+      setConnectionStatus('connected');
       addToast({ type: 'success', title: 'Reconnected', duration: 2000 });
     };
 
-    const onStatusChanged = () => qc.invalidateQueries({ queryKey: ['work-orders'] });
-    const onAssigned = () => {
+    const notifyAnd = (fn: () => void) => () => { fn(); notify(); };
+
+    const onStatusChanged = notifyAnd(() => qc.invalidateQueries({ queryKey: ['work-orders'] }));
+    const onAssigned = notifyAnd(() => {
       qc.invalidateQueries({ queryKey: ['work-orders'] });
       qc.invalidateQueries({ queryKey: ['notifications'] });
       qc.invalidateQueries({ queryKey: ['notifications', 'unread-count'] });
-    };
-    const onNotification = () => {
+    });
+    const onNotification = notifyAnd(() => {
       qc.invalidateQueries({ queryKey: ['notifications'] });
       qc.invalidateQueries({ queryKey: ['notifications', 'unread-count'] });
-    };
-    const onLocationUpdate = () => {
+    });
+    const onLocationUpdate = notifyAnd(() => {
+      const currentUser = useAuthStore.getState().user;
+      if (currentUser?.role === 'CUSTOMER') return;
       qc.invalidateQueries({ queryKey: ['locations'] });
-    };
+    });
 
     socket.on('connect', onConnect);
     socket.on('disconnect', onDisconnect);
@@ -68,7 +88,7 @@ export function useSocket() {
       socket.off('notification.new', onNotification);
       socket.off('location.update', onLocationUpdate);
     };
-  }, [qc, addToast, handleStatusChange]);
+  }, [qc, addToast, handleStatusChange, notify, setConnectionStatus]);
 
   return { status };
 }

@@ -125,9 +125,9 @@ function Sidebar({ mobile, onClose }: { mobile?: boolean; onClose?: () => void }
 
 function TopBar() {
   const { theme, setTheme } = useTheme();
-  const { status } = useSocket();
-  const { data: unreadData } = useUnreadCount();
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
+  const { status } = useSocket(() => setLastUpdated(new Date()));
+  const { data: unreadData } = useUnreadCount();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [alertsOpen, setAlertsOpen] = useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);

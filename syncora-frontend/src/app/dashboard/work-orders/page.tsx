@@ -6,7 +6,7 @@ import { WorkOrderFilters } from '@/components/shared/WorkOrderFilters';
 import { StatusPill } from '@/components/shared/StatusPill';
 import { TableSkeleton } from '@/components/shared/Skeleton';
 import { EmptyState } from '@/components/shared/EmptyState';
-import { OrderCard, OrderCardSkeleton } from '@/components/shared/OrderCard';
+import { JobCardStack } from '@/components/work-orders/JobCardStack';
 import { useAuthStore } from '@/lib/auth-store';
 import { ClipboardList, ChevronRight, Plus } from 'lucide-react';
 import Link from 'next/link';
@@ -36,7 +36,7 @@ export default function WorkOrdersPage() {
             {filtered.length} of {orders?.length ?? 0} orders
           </p>
         </div>
-        {user?.role === 'MODERATOR' && (
+        {(user?.role === 'MODERATOR' || user?.role === 'CUSTOMER') && (
           <Link href="/dashboard/work-orders/new" className="flex items-center gap-2 rounded-md bg-syncora-500 px-4 py-2 text-sm font-medium text-white hover:bg-syncora-600 transition-colors">
             <Plus className="h-4 w-4" aria-hidden="true" />
             New Order
@@ -53,8 +53,8 @@ export default function WorkOrdersPage() {
 
       {isLoading ? (
         <>
-          <div className="sm:hidden space-y-2">
-            {Array.from({ length: 5 }).map((_, i) => <OrderCardSkeleton key={i} />)}
+          <div className="sm:hidden">
+            <JobCardStack orders={[]} isLoading />
           </div>
           <div className="hidden sm:block">
             <TableSkeleton rows={8} />
@@ -68,8 +68,8 @@ export default function WorkOrdersPage() {
         />
       ) : (
         <>
-          <div className="sm:hidden space-y-2">
-            {filtered.map((o) => <OrderCard key={o.id} order={o} />)}
+          <div className="sm:hidden">
+            <JobCardStack orders={filtered} />
           </div>
           <div className="hidden sm:block rounded-lg border border-border overflow-hidden">
             <table className="w-full text-sm">

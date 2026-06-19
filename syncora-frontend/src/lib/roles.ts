@@ -54,7 +54,7 @@ export const navItems: NavItem[] = [
     label: 'Profile',
     href: '/dashboard/profile',
     icon: UserCircle,
-    roles: ['CUSTOMER'],
+    roles: ['MODERATOR', 'TECHNICIAN', 'CUSTOMER'],
   },
 ];
 

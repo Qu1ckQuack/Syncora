@@ -1,8 +1,9 @@
-import { Controller, Get, Param, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Param, Query, UseGuards, ForbiddenException } from '@nestjs/common';
 import { LocationService } from './location.service';
 import { JwtAuthGuard } from '../../modules/auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../modules/auth/guards/roles.guard';
 import { Roles } from '../../modules/auth/decorators/roles.decorator';
+import { CurrentUser } from '../../modules/auth/decorators/current-user.decorator';
 
 @Controller('locations')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -27,7 +28,16 @@ export class LocationController {
 
   @Get('work-order/:id')
   @Roles('MODERATOR', 'TECHNICIAN', 'CUSTOMER')
-  async getWorkOrderLocations(@Param('id') id: string) {
+  async getWorkOrderLocations(
+    @Param('id') id: string,
+    @CurrentUser() user: { id: string; role: string },
+  ) {
+    if (user.role === 'CUSTOMER') {
+      const order = await this.locationService.getWorkOrderOwner(id);
+      if (order?.customerId !== user.id) {
+        throw new ForbiddenException('Access denied');
+      }
+    }
     return this.locationService.getLatestByWorkOrder(id);
   }
 }

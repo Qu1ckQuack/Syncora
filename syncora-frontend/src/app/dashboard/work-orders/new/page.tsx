@@ -45,7 +45,7 @@ export default function NewWorkOrderPage() {
       return;
     }
 
-    if (user?.role !== 'MODERATOR' && !customerId) {
+    if (user?.role !== 'MODERATOR' && user?.role !== 'CUSTOMER' && !customerId) {
       setError('Customer is required.');
       return;
     }

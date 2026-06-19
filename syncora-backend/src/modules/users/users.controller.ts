@@ -27,11 +27,15 @@ export class UsersController {
   constructor(private usersService: UsersService) {}
 
   @Get()
+  @UseGuards(RolesGuard)
+  @Roles('MODERATOR', 'TECHNICIAN')
   findAll(@Query('role') role?: string) {
     return this.usersService.findAll(role);
   }
 
   @Get(':id')
+  @UseGuards(RolesGuard)
+  @Roles('MODERATOR', 'TECHNICIAN')
   findOne(@Param('id') id: string) {
     return this.usersService.findOne(id);
   }
@@ -66,20 +70,14 @@ export class UsersController {
   @Patch(':id')
   @UseGuards(RolesGuard)
   @Roles('MODERATOR')
-  updateUser(
-    @Param('id') id: string,
-    @Body() dto: UpdateUserDto,
-  ) {
+  updateUser(@Param('id') id: string, @Body() dto: UpdateUserDto) {
     return this.usersService.updateUser(id, dto);
   }
 
   @Patch(':id/status')
   @UseGuards(RolesGuard)
   @Roles('MODERATOR')
-  updateUserStatus(
-    @Param('id') id: string,
-    @Body() dto: UpdateUserStatusDto,
-  ) {
+  updateUserStatus(@Param('id') id: string, @Body() dto: UpdateUserStatusDto) {
     return this.usersService.updateUserStatus(id, dto);
   }
 

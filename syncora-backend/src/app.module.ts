@@ -9,6 +9,7 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
 import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { WsModule } from './modules/ws/ws.module';
 import { LocationModule } from './modules/locations/location.module';
+import { UploadModule } from './modules/upload/upload.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { LocationModule } from './modules/locations/location.module';
     AnalyticsModule,
     WsModule,
     LocationModule,
+    UploadModule,
   ],
 })
 export class AppModule {}

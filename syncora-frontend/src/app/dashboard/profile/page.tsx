@@ -1,14 +1,15 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useAuthStore } from '@/lib/auth-store';
 import { useWorkOrders } from '@/lib/hooks/use-work-orders';
 import { useUpdateProfile, useChangePassword, useUpdateTechnicianStatus } from '@/lib/hooks/use-users';
+import { useAvatarUpload } from '@/lib/hooks/use-upload';
 import { ProgressTracker } from '@/components/shared/ProgressTracker';
 import { StatusPill } from '@/components/shared/StatusPill';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { CardSkeleton } from '@/components/shared/Skeleton';
-import { UserCircle, ClipboardList, Loader2, Check, X, Eye, EyeOff } from 'lucide-react';
+import { ClipboardList, Loader2, Check, X, Eye, EyeOff, Camera } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { TechnicianStatus as TS } from '@/lib/types';
 
@@ -19,7 +20,9 @@ export default function ProfilePage() {
   const updateProfile = useUpdateProfile();
   const changePassword = useChangePassword();
   const updateStatus = useUpdateTechnicianStatus();
+  const avatarUpload = useAvatarUpload();
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(user?.name ?? '');
   const [currentPassword, setCurrentPassword] = useState('');
@@ -29,6 +32,7 @@ export default function ProfilePage() {
   const [showNew, setShowNew] = useState(false);
   const [pwError, setPwError] = useState('');
   const [pwSuccess, setPwSuccess] = useState('');
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
 
   if (!user) return null;
 
@@ -43,6 +47,31 @@ export default function ProfilePage() {
     const updated = await updateProfile.mutateAsync({ name: name.trim() });
     setUser(updated);
     setEditing(false);
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      return;
+    }
+
+    if (file.size > 2 * 1024 * 1024) {
+      return;
+    }
+
+    const preview = URL.createObjectURL(file);
+    setAvatarPreview(preview);
+
+    try {
+      const result = await avatarUpload.mutateAsync(file);
+      const updated = await updateProfile.mutateAsync({ avatarUrl: result.avatarUrl });
+      setUser(updated);
+      setAvatarPreview(null);
+    } catch {
+      setAvatarPreview(null);
+    }
   };
 
   const handleChangePassword = async (e: React.FormEvent) => {
@@ -70,12 +99,44 @@ export default function ProfilePage() {
     setUser({ ...user, technicianStatus: updated.technicianStatus });
   };
 
+  const avatarSrc = avatarPreview ?? user.avatarUrl;
+
   return (
     <div className="max-w-3xl space-y-6">
       <div className="rounded-lg border border-border bg-card p-6">
         <div className="flex items-start gap-4">
-          <div className="h-16 w-16 rounded-full bg-gradient-to-br from-syncora-400 to-syncora-600 flex items-center justify-center text-white text-2xl font-bold shrink-0">
-            {user.name.charAt(0).toUpperCase()}
+          <div className="relative shrink-0 group">
+            {avatarSrc ? (
+              <img
+                src={avatarSrc}
+                alt={user.name}
+                className="h-16 w-16 rounded-full object-cover"
+              />
+            ) : (
+              <div className="h-16 w-16 rounded-full bg-gradient-to-br from-syncora-400 to-syncora-600 flex items-center justify-center text-white text-2xl font-bold">
+                {user.name.charAt(0).toUpperCase()}
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={avatarUpload.isPending}
+              className="absolute inset-0 flex items-center justify-center rounded-full bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity"
+              aria-label="Change photo"
+            >
+              {avatarUpload.isPending ? (
+                <Loader2 className="h-5 w-5 animate-spin text-white" />
+              ) : (
+                <Camera className="h-5 w-5 text-white" />
+              )}
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleFileChange}
+            />
           </div>
           <div className="flex-1 min-w-0">
             {editing ? (
@@ -217,7 +278,7 @@ export default function ProfilePage() {
             <EmptyState
               icon={ClipboardList}
               title="No orders yet"
-              description="You don't have any work orders. A moderator will create one for you."
+              description="You don't have any work orders yet. Create one to get started."
             />
           ) : (
             <div className="rounded-lg border border-border bg-card p-6 space-y-6">

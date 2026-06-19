@@ -38,8 +38,13 @@ export class WorkOrdersService {
     const count = await this.prisma.workOrder.count();
     const orderNumber = `SYN-${1007 + count}`;
 
-    const customerId =
-      user.role === 'CUSTOMER' ? user.id : dto.customerId;
+    if (user.role !== 'CUSTOMER' && !dto.customerId) {
+      throw new BadRequestException(
+        'customerId is required for non-customer users',
+      );
+    }
+
+    const customerId = user.role === 'CUSTOMER' ? user.id : dto.customerId!;
 
     let lat: number | undefined;
     let lng: number | undefined;
@@ -62,7 +67,9 @@ export class WorkOrdersService {
         location: dto.location,
         latitude: dto.latitude ?? lat ?? null,
         longitude: dto.longitude ?? lng ?? null,
-        scheduledStart: dto.scheduledStart ? new Date(dto.scheduledStart) : null,
+        scheduledStart: dto.scheduledStart
+          ? new Date(dto.scheduledStart)
+          : null,
         scheduledEnd: dto.scheduledEnd ? new Date(dto.scheduledEnd) : null,
         status: 'PENDING',
       },
@@ -139,7 +146,12 @@ export class WorkOrdersService {
     let lat: number | undefined;
     let lng: number | undefined;
 
-    if (dto.location && dto.location !== order.location && !dto.latitude && !dto.longitude) {
+    if (
+      dto.location &&
+      dto.location !== order.location &&
+      !dto.latitude &&
+      !dto.longitude
+    ) {
       const coords = await this.geocodeLocation(dto.location);
       if (coords) {
         lat = coords.lat;
@@ -154,9 +166,11 @@ export class WorkOrdersService {
         description: dto.description,
         priority: dto.priority,
         location: dto.location,
-        latitude: dto.latitude ?? (lat ?? order.latitude),
-        longitude: dto.longitude ?? (lng ?? order.longitude),
-        scheduledStart: dto.scheduledStart ? new Date(dto.scheduledStart) : undefined,
+        latitude: dto.latitude ?? lat ?? order.latitude,
+        longitude: dto.longitude ?? lng ?? order.longitude,
+        scheduledStart: dto.scheduledStart
+          ? new Date(dto.scheduledStart)
+          : undefined,
         scheduledEnd: dto.scheduledEnd ? new Date(dto.scheduledEnd) : undefined,
       },
       include: {
@@ -180,6 +194,11 @@ export class WorkOrdersService {
   async assign(id: string, dto: AssignWorkOrderDto, userId: string) {
     const order = await this.prisma.workOrder.findUnique({ where: { id } });
     if (!order) throw new NotFoundException('Work order not found');
+
+    const technician = await this.prisma.user.findUnique({ where: { id: dto.technicianId } });
+    if (!technician || technician.role !== 'TECHNICIAN') {
+      throw new BadRequestException('User is not a technician');
+    }
 
     const updated = await this.prisma.workOrder.update({
       where: { id },
@@ -226,7 +245,9 @@ export class WorkOrdersService {
     if (!order) throw new NotFoundException('Work order not found');
 
     if (user.role !== 'MODERATOR' && order.technicianId !== user.id) {
-      throw new ForbiddenException('Only the assigned technician can update status');
+      throw new ForbiddenException(
+        'Only the assigned technician can update status',
+      );
     }
 
     const allowed = VALID_TRANSITIONS[order.status];
@@ -362,7 +383,9 @@ export class WorkOrdersService {
     }
   }
 
-  private async geocodeLocation(location: string): Promise<{ lat: number; lng: number } | null> {
+  private async geocodeLocation(
+    location: string,
+  ): Promise<{ lat: number; lng: number } | null> {
     try {
       const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(location)}&format=json&limit=1`;
       const res = await fetch(url, {

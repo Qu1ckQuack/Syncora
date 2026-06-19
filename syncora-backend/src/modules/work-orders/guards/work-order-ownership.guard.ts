@@ -25,7 +25,8 @@ export class WorkOrderOwnershipGuard implements CanActivate {
     }
 
     if (user.role === 'MODERATOR') return true;
-    if (user.role === 'TECHNICIAN' && order.technicianId === user.id) return true;
+    if (user.role === 'TECHNICIAN' && order.technicianId === user.id)
+      return true;
     if (user.role === 'CUSTOMER' && order.customerId === user.id) return true;
 
     throw new ForbiddenException('You do not have access to this work order');

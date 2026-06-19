@@ -35,7 +35,9 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect {
     private prisma: PrismaService,
   ) {}
 
-  private parseCookies(cookieHeader: string | undefined): Record<string, string> {
+  private parseCookies(
+    cookieHeader: string | undefined,
+  ): Record<string, string> {
     const cookies: Record<string, string> = {};
     if (!cookieHeader) return cookies;
     for (const part of cookieHeader.split(';')) {
@@ -57,9 +59,16 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
     try {
       // Hardcoded: Remove fallback in production — JWT_SECRET must be set in env
-      const secret = this.configService.get<string>('JWT_SECRET', 'dev-jwt-secret');
+      const secret = this.configService.get<string>(
+        'JWT_SECRET',
+        'dev-jwt-secret',
+      );
       const payload = jwt.verify(token, secret) as JwtPayload;
-      client.data.user = { id: payload.sub, email: payload.email, role: payload.role };
+      client.data.user = {
+        id: payload.sub,
+        email: payload.email,
+        role: payload.role,
+      };
       client.join(`user:${payload.sub}`);
       client.join(`role:${payload.role}`);
       this.logger.log(`Socket connected: ${payload.email} (${payload.role})`);
@@ -79,7 +88,12 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage('location.update')
   async handleLocationUpdate(
     client: Socket,
-    payload: { workOrderId?: string; latitude: number; longitude: number; accuracy?: number },
+    payload: {
+      workOrderId?: string;
+      latitude: number;
+      longitude: number;
+      accuracy?: number;
+    },
   ) {
     const user = client.data.user;
     if (!user || user.role !== 'TECHNICIAN') return;
@@ -94,7 +108,8 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect {
       },
     });
 
-    this.broadcast('location.update', location);
+    this.emitToRole('MODERATOR', 'location.update', location);
+    this.emitToRole('TECHNICIAN', 'location.update', location);
 
     if (payload.workOrderId) {
       const order = await this.prisma.workOrder.findUnique({

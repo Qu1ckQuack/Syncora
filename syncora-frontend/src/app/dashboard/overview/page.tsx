@@ -6,8 +6,8 @@ import { AlertsPanel } from '@/components/shared/AlertsPanel';
 import { TableSkeleton, CardSkeleton } from '@/components/shared/Skeleton';
 import { WorkOrderFilters } from '@/components/shared/WorkOrderFilters';
 import { StatusPill } from '@/components/shared/StatusPill';
-import { OrderCard, OrderCardSkeleton } from '@/components/shared/OrderCard';
 import { useAuthStore } from '@/lib/auth-store';
+import { JobCardStack } from '@/components/work-orders/JobCardStack';
 import { useNotifications } from '@/lib/hooks/use-notifications';
 import { ClipboardList, Wrench, CheckCircle2, Clock, AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
@@ -72,8 +72,8 @@ export default function OverviewPage() {
 
           {isLoading ? (
             <>
-              <div className="sm:hidden space-y-2">
-                {Array.from({ length: 3 }).map((_, i) => <OrderCardSkeleton key={i} />)}
+              <div className="sm:hidden">
+                <JobCardStack orders={[]} isLoading />
               </div>
               <div className="hidden sm:block">
                 <TableSkeleton rows={4} />
@@ -86,8 +86,8 @@ export default function OverviewPage() {
             </div>
           ) : (
             <>
-              <div className="sm:hidden space-y-2">
-                {filtered.slice(0, 10).map((o) => <OrderCard key={o.id} order={o} />)}
+              <div className="sm:hidden">
+                <JobCardStack orders={filtered.slice(0, 10)} />
               </div>
               <div className="hidden sm:block rounded-lg border border-border overflow-hidden">
                 <table className="w-full text-sm">

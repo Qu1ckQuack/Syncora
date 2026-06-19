@@ -14,7 +14,8 @@ export class CreateWorkOrderDto {
   priority?: Priority;
 
   @IsUUID()
-  customerId: string;
+  @IsOptional()
+  customerId?: string;
 
   @IsString()
   @IsOptional()
