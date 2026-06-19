@@ -9,6 +9,7 @@ import { StatusPill } from '@/components/shared/StatusPill';
 import { useAuthStore } from '@/lib/auth-store';
 import { JobCardStack } from '@/components/work-orders/JobCardStack';
 import { useNotifications } from '@/lib/hooks/use-notifications';
+import { useAnalyticsOverview } from '@/lib/hooks/use-analytics';
 import { ClipboardList, Wrench, CheckCircle2, Clock, AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
@@ -17,6 +18,7 @@ export default function OverviewPage() {
   const user = useAuthStore((s) => s.user);
   const { data: orders, isLoading } = useWorkOrders();
   const { data: notifications } = useNotifications();
+  const { data: analytics } = useAnalyticsOverview();
   const [filterStatus, setFilterStatus] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -35,10 +37,10 @@ export default function OverviewPage() {
   const unreadNotifs = notifications?.filter((n) => !n.read).length ?? 0;
 
   const stats = [
-    { title: 'Total Orders', value: orders?.length ?? 0, icon: ClipboardList, color: 'purple' as const, trend: { value: 12, positive: true } },
-    { title: 'In Progress', value: inProgress, icon: Wrench, color: 'blue' as const, trend: { value: 8, positive: false } },
-    { title: 'Completed', value: completed, icon: CheckCircle2, color: 'green' as const, trend: { value: 24, positive: true } },
-    { title: 'Pending Urgent', value: pendingUrgent, icon: AlertTriangle, color: 'red' as const, trend: { value: pendingUrgent > 0 ? 100 : 0, positive: false } },
+    { title: 'Total Orders', value: orders?.length ?? 0, icon: ClipboardList, color: 'purple' as const },
+    { title: 'In Progress', value: inProgress, icon: Wrench, color: 'blue' as const },
+    { title: 'Completed', value: completed, icon: CheckCircle2, color: 'green' as const, trend: analytics ? { value: analytics.completionRate, positive: true } : undefined },
+    { title: 'Pending Urgent', value: pendingUrgent, icon: AlertTriangle, color: 'red' as const, trend: pendingUrgent > 0 ? { value: 100, positive: false } : undefined },
   ];
 
   return (

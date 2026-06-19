@@ -88,3 +88,30 @@ export interface TechnicianLocation {
   timestamp: string;
   technician?: { id: string; name: string };
 }
+
+export interface AnalyticsOverview {
+  totalOrders: number;
+  byStatus: Record<string, number>;
+  pendingUrgent: number;
+  completionRate: number;
+  avgCompletionHours: number | null;
+  unreadAlerts: number;
+}
+
+export interface CompletionTrend {
+  date: string;
+  count: number;
+}
+
+export interface TechnicianPerformance {
+  technicianId: string;
+  name: string;
+  completed: number;
+  avgTimeHours: number | null;
+  activeOrders: number;
+}
+
+export interface AlertFrequency {
+  type: NotificationType;
+  count: number;
+}

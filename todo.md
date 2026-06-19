@@ -152,11 +152,19 @@ Status legend: `[ ]` Planned · `[~]` In Progress · `[x]` Done · `[-]` Skipped
 ## Phase 9 — Analytics
 **Goal:** Operational reporting from production data.
 
-- [~] KPI summary cards (client-side computed from raw work orders — placeholder)
-- [ ] Backend analytics module (empty — no service or controller)
-- [ ] Order completion metrics (daily/weekly)
-- [ ] Technician performance metrics (orders completed, average time)
-- [ ] Alert frequency metrics
+- [x] KPI summary cards (client-side computed from raw work orders — placeholder)
+- [x] Backend analytics module (service + 4 aggregation methods)
+- [x] Order completion metrics (daily/weekly trend endpoint)
+- [x] Technician performance metrics (orders completed, average time)
+- [x] Alert frequency metrics (by notification type)
+- [x] Analytics overview endpoint (`GET /analytics/overview`)
+- [x] Completion trend endpoint (`GET /analytics/trends/completion?days=&period=`)
+- [x] Technician performance endpoint (`GET /analytics/technicians` — MODERATOR)
+- [x] Alert frequency endpoint (`GET /analytics/alerts?days=` — MODERATOR)
+- [x] Frontend analytics hooks (`use-analytics.ts` — 4 TanStack Query hooks)
+- [x] Overview page uses real `completionRate` trend (replaces hardcoded values)
+- [x] Dedicated `/dashboard/analytics` page with period selector, recharts bar charts, tech table
+- [x] Analytics nav item added for MODERATOR role
 
 **Exit criteria:** Metrics generated from real production data
 

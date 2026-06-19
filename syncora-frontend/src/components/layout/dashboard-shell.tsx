@@ -18,7 +18,6 @@ import {
   Sun,
   Moon,
   LogOut,
-  Menu,
   X,
   ChevronRight,
   LayoutDashboard,
@@ -156,8 +155,23 @@ function TopBar() {
           onClick={() => setMobileMenuOpen(true)}
           aria-label="Open menu"
         >
-          <Menu className="h-5 w-5" />
+          <svg width="24" height="24" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <rect width="40" height="40" rx="8" fill="#7B2FF7" />
+            <circle cx="20" cy="20" r="10" stroke="white" strokeWidth="2" />
+            <circle cx="20" cy="20" r="3" fill="white" />
+          </svg>
         </button>
+        <span className="hidden lg:flex items-center gap-2">
+          <svg width="24" height="24" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <rect width="40" height="40" rx="8" fill="#7B2FF7" />
+            <circle cx="20" cy="20" r="10" stroke="white" strokeWidth="2" />
+            <circle cx="20" cy="20" r="3" fill="white" />
+          </svg>
+          <span className="text-sm font-bold">
+            <span className="text-syncora-500">Sync</span>
+            <span className="text-muted-foreground">ora</span>
+          </span>
+        </span>
 
           <button
             className="sm:hidden p-2 rounded-md hover:bg-accent min-h-[44px] min-w-[44px] flex items-center justify-center"
@@ -220,6 +234,17 @@ function TopBar() {
             aria-label={'Switch to ' + (theme === 'dark' ? 'light' : 'dark') + ' mode'}
           >
             {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+          </button>
+
+          <button
+            onClick={async () => {
+              await useAuthStore.getState().logout();
+              window.location.href = '/login';
+            }}
+            className="p-1.5 rounded-md hover:bg-accent min-h-[44px] min-w-[44px] flex items-center justify-center"
+            aria-label="Sign out"
+          >
+            <LogOut className="h-4 w-4" />
           </button>
         </div>
       </header>

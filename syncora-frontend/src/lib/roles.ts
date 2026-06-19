@@ -5,6 +5,7 @@ import {
   Settings,
   UserCircle,
   Map,
+  BarChart3,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -37,6 +38,12 @@ export const navItems: NavItem[] = [
     href: '/dashboard/map',
     icon: Map,
     roles: ['MODERATOR', 'TECHNICIAN', 'CUSTOMER'],
+  },
+  {
+    label: 'Analytics',
+    href: '/dashboard/analytics',
+    icon: BarChart3,
+    roles: ['MODERATOR'],
   },
   {
     label: 'People',
