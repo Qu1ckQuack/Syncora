@@ -11,18 +11,25 @@ export class LocationController {
   constructor(private locationService: LocationService) {}
 
   @Get('technician/:id')
-  @Roles('MODERATOR', 'TECHNICIAN')
-  async getTechnicianLatest(@Param('id') id: string) {
+  @Roles('MODERATOR')
+  async getTechnicianLatest(@Param('id') id: string, @CurrentUser() user: { id: string; role: string }) {
+    if (user.role !== 'MODERATOR' && user.id !== id) {
+      throw new ForbiddenException('Access denied');
+    }
     return this.locationService.getLatestByTechnician(id);
   }
 
   @Get('technician/:id/history')
-  @Roles('MODERATOR', 'TECHNICIAN')
+  @Roles('MODERATOR')
   async getTechnicianHistory(
     @Param('id') id: string,
+    @CurrentUser() user: { id: string; role: string },
     @Query('from') from?: string,
     @Query('to') to?: string,
   ) {
+    if (user.role !== 'MODERATOR' && user.id !== id) {
+      throw new ForbiddenException('Access denied');
+    }
     return this.locationService.getHistoryByTechnician(id, from, to);
   }
 

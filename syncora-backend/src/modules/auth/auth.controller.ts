@@ -52,14 +52,12 @@ export class AuthController {
 
   @Post('logout')
   @HttpCode(HttpStatus.OK)
-  @UseGuards(JwtAuthGuard)
   async logout(
-    @CurrentUser('id') userId: string,
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
-    const token = req.cookies?.refresh_token;
-    return this.authService.logout(userId, token, res);
+    const refreshTokenStr = req.cookies?.refresh_token;
+    return this.authService.logout(refreshTokenStr, res);
   }
 
   @Get('me')

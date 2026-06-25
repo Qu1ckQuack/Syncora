@@ -10,7 +10,7 @@ import type {
 } from '@/lib/types';
 
 async function fetchOverview(): Promise<AnalyticsOverview> {
-  const res = await fetch('/api/analytics/overview');
+  const res = await fetch('/api/analytics/overview', { credentials: 'include' });
   if (!res.ok) throw new Error('Failed to fetch analytics overview');
   return res.json();
 }
@@ -21,13 +21,14 @@ async function fetchCompletionTrend(
 ): Promise<CompletionTrend[]> {
   const res = await fetch(
     `/api/analytics/trends/completion?days=${days}&period=${period}`,
+    { credentials: 'include' },
   );
   if (!res.ok) throw new Error('Failed to fetch completion trend');
   return res.json();
 }
 
 async function fetchTechnicianPerformance(): Promise<TechnicianPerformance[]> {
-  const res = await fetch('/api/analytics/technicians');
+  const res = await fetch('/api/analytics/technicians', { credentials: 'include' });
   if (!res.ok) throw new Error('Failed to fetch technician performance');
   return res.json();
 }
@@ -35,7 +36,7 @@ async function fetchTechnicianPerformance(): Promise<TechnicianPerformance[]> {
 async function fetchAlertFrequency(
   days: number,
 ): Promise<AlertFrequency[]> {
-  const res = await fetch(`/api/analytics/alerts?days=${days}`);
+  const res = await fetch(`/api/analytics/alerts?days=${days}`, { credentials: 'include' });
   if (!res.ok) throw new Error('Failed to fetch alert frequency');
   return res.json();
 }

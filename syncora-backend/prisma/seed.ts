@@ -191,6 +191,7 @@ async function main() {
       create: orderData,
     });
 
+      const baseTime = orderData.scheduledStart?.getTime() ?? Date.now();
     for (const [index, entry] of statusHistory.entries()) {
       await prisma.statusHistory.create({
         data: {
@@ -199,7 +200,7 @@ async function main() {
           toStatus: entry.toStatus,
           changedById: entry.toStatus === WorkOrderStatus.PENDING ? moderator.id : (orderData.technicianId ?? moderator.id),
           note: entry.note,
-          createdAt: new Date(orderData.scheduledStart!.getTime() - (statusHistory.length - index) * 3600000),
+          createdAt: new Date(baseTime - (statusHistory.length - index) * 3600000),
         },
       });
     }
@@ -215,12 +216,9 @@ async function main() {
     { userId: customer2.id, type: NotificationType.JOB_COMPLETED, title: 'Job Completed', message: 'Router Installation was completed successfully.', workOrderId: allOrders.find(o => o.orderNumber === 'SYN-1004')!.id },
   ];
 
+  await prisma.notification.deleteMany({});
   for (const n of notifications) {
-    await prisma.notification.upsert({
-      where: { id: '' },
-      update: {},
-      create: n,
-    });
+    await prisma.notification.create({ data: n });
   }
 
   const auditEntries = [
@@ -234,6 +232,7 @@ async function main() {
     { action: 'STATUS_UPDATE', entityType: 'WORK_ORDER', entityId: allOrders.find(o => o.orderNumber === 'SYN-1004')!.id, userId: tech1.id, metadata: { from: 'IN_PROGRESS', to: 'COMPLETED' } },
   ];
 
+  await prisma.auditLog.deleteMany({});
   for (const entry of auditEntries) {
     await prisma.auditLog.create({ data: entry });
   }
@@ -246,6 +245,12 @@ async function main() {
       create: { userId: u.id },
     });
   }
+
+  await prisma.workOrderCounter.upsert({
+    where: { id: 'order_seq' },
+    update: { seq: 1006 },
+    create: { id: 'order_seq', seq: 1006 },
+  });
 
   console.log('Seed completed successfully');
   console.log(`  Users: ${await prisma.user.count()}`);

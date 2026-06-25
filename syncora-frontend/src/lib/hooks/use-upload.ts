@@ -9,6 +9,7 @@ async function uploadAvatar(file: File): Promise<{ avatarUrl: string }> {
   const res = await fetch('/api/upload/avatar', {
     method: 'POST',
     body: formData,
+    credentials: 'include',
   });
 
   if (!res.ok) {

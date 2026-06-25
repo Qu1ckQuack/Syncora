@@ -13,13 +13,14 @@ import { useAnalyticsOverview } from '@/lib/hooks/use-analytics';
 import { ClipboardList, Wrench, CheckCircle2, Clock, AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
+import type { WorkOrderStatus } from '@/lib/types';
 
 export default function OverviewPage() {
   const user = useAuthStore((s) => s.user);
   const { data: orders, isLoading } = useWorkOrders();
   const { data: notifications } = useNotifications();
   const { data: analytics } = useAnalyticsOverview();
-  const [filterStatus, setFilterStatus] = useState<string>('ALL');
+  const [filterStatus, setFilterStatus] = useState<WorkOrderStatus | 'ALL'>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
 
   const filtered = (orders ?? []).filter((o) => {
@@ -66,8 +67,8 @@ export default function OverviewPage() {
           </div>
 
           <WorkOrderFilters
-            selectedStatus={filterStatus as any}
-            onStatusChange={setFilterStatus as any}
+            selectedStatus={filterStatus}
+            onStatusChange={setFilterStatus}
             searchQuery={searchQuery}
             onSearchChange={setSearchQuery}
           />
@@ -104,7 +105,11 @@ export default function OverviewPage() {
                   </thead>
                   <tbody>
                     {filtered.slice(0, 10).map((o) => (
-                      <tr key={o.id} className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors">
+                      <tr
+                        key={o.id}
+                        onClick={() => window.location.href = `/dashboard/work-orders/${o.id}`}
+                        className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors cursor-pointer"
+                      >
                         <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{o.orderNumber}</td>
                         <td className="px-4 py-3 font-medium">{o.title}</td>
                         <td className="px-4 py-3 hidden sm:table-cell"><StatusPill status={o.status} /></td>

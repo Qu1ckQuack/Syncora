@@ -34,9 +34,7 @@ export class WorkOrdersService {
   ) {}
 
   async create(dto: CreateWorkOrderDto, user: { id: string; role: string }) {
-    // Hardcoded: Replace with DB sequence or dedicated counter table (risks collision on concurrent creates)
-    const count = await this.prisma.workOrder.count();
-    const orderNumber = `SYN-${1007 + count}`;
+    const orderNumber = await this.generateOrderNumber();
 
     if (user.role !== 'CUSTOMER' && !dto.customerId) {
       throw new BadRequestException(
@@ -227,7 +225,21 @@ export class WorkOrdersService {
       workOrderId: id,
     });
 
+    await this.notificationsService.create({
+      userId: order.customerId,
+      type: NotificationType.JOB_ASSIGNED,
+      title: 'Technician Assigned',
+      message: `A technician has been assigned to ${order.title}.`,
+      workOrderId: id,
+    });
+
     this.wsGateway.emitToUser(dto.technicianId, 'workOrder.assigned', {
+      workOrderId: id,
+      orderNumber: order.orderNumber,
+      title: order.title,
+    });
+
+    this.wsGateway.emitToUser(order.customerId, 'workOrder.assigned', {
       workOrderId: id,
       orderNumber: order.orderNumber,
       title: order.title,
@@ -357,10 +369,14 @@ export class WorkOrdersService {
     switch (status) {
       case 'EN_ROUTE':
         return NotificationType.EN_ROUTE;
+      case 'IN_PROGRESS':
+        return NotificationType.IN_PROGRESS;
       case 'COMPLETED':
         return NotificationType.JOB_COMPLETED;
       case 'DELAYED':
         return NotificationType.DELAY_ALERT;
+      case 'CANCELLED':
+        return NotificationType.CANCELLED;
       default:
         return null;
     }
@@ -381,6 +397,18 @@ export class WorkOrdersService {
       default:
         return 'Status Updated';
     }
+  }
+
+  private async generateOrderNumber(): Promise<string> {
+    const result = await this.prisma.$transaction(async (tx) => {
+      const counter = await tx.workOrderCounter.upsert({
+        where: { id: 'order_seq' },
+        update: { seq: { increment: 1 } },
+        create: { id: 'order_seq', seq: 1001 },
+      });
+      return `SYN-${counter.seq}`;
+    });
+    return result;
   }
 
   private async geocodeLocation(

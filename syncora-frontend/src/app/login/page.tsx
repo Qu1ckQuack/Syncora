@@ -12,15 +12,21 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [isPending, setIsPending] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setIsPending(true);
     try {
       await login(email, password);
-      router.push('/dashboard/overview');
+      const currentUser = useAuthStore.getState().user;
+      const targetPath = currentUser?.role === 'CUSTOMER' ? '/dashboard/work-orders' : '/dashboard/overview';
+      router.push(targetPath);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
+    } finally {
+      setIsPending(false);
     }
   };
 
@@ -96,9 +102,10 @@ export default function LoginPage() {
 
           <button
             type="submit"
-            className="w-full rounded-md bg-syncora-500 px-4 py-2 text-sm font-medium text-white hover:bg-syncora-600 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-syncora-500 focus-visible:ring-offset-2"
+            disabled={isPending}
+            className="w-full rounded-md bg-syncora-500 px-4 py-2 text-sm font-medium text-white hover:bg-syncora-600 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-syncora-500 focus-visible:ring-offset-2 disabled:opacity-50"
           >
-            Sign In
+            {isPending ? 'Signing in…' : 'Sign In'}
           </button>
         </form>
 

@@ -45,7 +45,7 @@ function NotificationItem({ notification }: { notification: NotificationItem }) 
         <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{notification.message}</p>
         {notification.workOrder && (
           <Link
-            href={`/dashboard/work-orders?id=${notification.workOrder.id}`}
+            href={`/dashboard/work-orders/${notification.workOrder.id}`}
             className="text-xs text-syncora-500 hover:underline mt-1 inline-block"
             onClick={(e) => e.stopPropagation()}
           >

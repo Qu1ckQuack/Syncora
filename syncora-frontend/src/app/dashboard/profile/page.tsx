@@ -96,7 +96,9 @@ export default function ProfilePage() {
   const handleToggleStatus = async () => {
     const nextStatus: TS = user.technicianStatus === 'ONLINE' ? 'OFFLINE' : 'ONLINE';
     const updated = await updateStatus.mutateAsync(nextStatus);
-    setUser({ ...user, technicianStatus: updated.technicianStatus });
+    const currentUser = useAuthStore.getState().user;
+    if (!currentUser) return;
+    setUser({ ...currentUser, technicianStatus: updated.technicianStatus });
   };
 
   const avatarSrc = avatarPreview ?? user.avatarUrl;

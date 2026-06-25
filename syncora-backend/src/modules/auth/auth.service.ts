@@ -186,11 +186,6 @@ export class AuthService {
       throw new UnauthorizedException('Invalid or expired refresh token');
     }
 
-    await this.prisma.refreshToken.update({
-      where: { id: storedToken.id },
-      data: { revoked: true, replacedByToken: 'rotated' },
-    });
-
     const user = await this.prisma.user.findUnique({
       where: { id: storedToken.userId },
     });
@@ -201,6 +196,13 @@ export class AuthService {
 
     const accessToken = this.generateAccessToken(user);
     const newRefreshToken = await this.generateRefreshToken(user.id);
+    const hashedNewToken = this.hashToken(newRefreshToken);
+
+    await this.prisma.refreshToken.update({
+      where: { id: storedToken.id },
+      data: { revoked: true, replacedByToken: hashedNewToken },
+    });
+
     this.setAuthCookies(res, accessToken, newRefreshToken);
 
     return {
@@ -211,26 +213,36 @@ export class AuthService {
     };
   }
 
-  async logout(userId: string, refreshTokenStr: string, res: Response) {
+  async logout(refreshTokenStr: string | undefined, res: Response) {
+    let userId: string | null = null;
+
     if (refreshTokenStr) {
       const hashed = this.hashToken(refreshTokenStr);
-      await this.prisma.refreshToken.updateMany({
-        where: { token: hashed, userId },
-        data: { revoked: true },
+      const stored = await this.prisma.refreshToken.findUnique({
+        where: { token: hashed },
       });
+      if (stored) {
+        userId = stored.userId;
+        await this.prisma.refreshToken.update({
+          where: { id: stored.id },
+          data: { revoked: true },
+        });
+      }
     }
 
-    await this.prisma.auditLog.create({
-      data: {
-        action: 'LOGOUT',
-        entityType: 'USER',
-        entityId: userId,
-        userId,
-      },
-    });
+    if (userId) {
+      await this.prisma.auditLog.create({
+        data: {
+          action: 'LOGOUT',
+          entityType: 'USER',
+          entityId: userId,
+          userId,
+        },
+      });
+      this.logger.log(`User logged out: ${userId}`);
+    }
 
     this.clearAuthCookies(res);
-    this.logger.log(`User logged out: ${userId}`);
     return { message: 'Logged out successfully' };
   }
 

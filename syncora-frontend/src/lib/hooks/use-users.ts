@@ -5,13 +5,13 @@ import type { User } from '@/lib/types';
 
 async function fetchUsers(role?: string): Promise<User[]> {
   const params = role ? `?role=${role}` : '';
-  const res = await fetch(`/api/users${params}`);
+  const res = await fetch(`/api/users${params}`, { credentials: 'include' });
   if (!res.ok) throw new Error('Failed to fetch users');
   return res.json();
 }
 
 async function fetchUser(id: string): Promise<User> {
-  const res = await fetch(`/api/users/${id}`);
+  const res = await fetch(`/api/users/${id}`, { credentials: 'include' });
   if (!res.ok) throw new Error('Failed to fetch user');
   return res.json();
 }
@@ -39,6 +39,7 @@ export function useUpdateProfile() {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
+        credentials: 'include',
       });
       if (!res.ok) throw new Error('Failed to update profile');
       return res.json();
@@ -56,6 +57,7 @@ export function useChangePassword() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
+        credentials: 'include',
       });
       if (!res.ok) {
         const err = await res.json();
@@ -73,6 +75,7 @@ export function useUpdateTechnicianStatus() {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ technicianStatus }),
+        credentials: 'include',
       });
       if (!res.ok) throw new Error('Failed to update status');
       return res.json();
@@ -91,6 +94,7 @@ export function useUpdateUser() {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
+        credentials: 'include',
       });
       if (!res.ok) throw new Error('Failed to update user');
       return res.json();
@@ -109,6 +113,7 @@ export function useUpdateUserStatus() {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ isActive }),
+        credentials: 'include',
       });
       if (!res.ok) throw new Error('Failed to update user status');
       return res.json();
@@ -125,6 +130,7 @@ export function useDeleteUser() {
     mutationFn: async (id: string) => {
       const res = await fetch(`/api/users/${id}`, {
         method: 'DELETE',
+        credentials: 'include',
       });
       if (!res.ok) {
         const err = await res.json();

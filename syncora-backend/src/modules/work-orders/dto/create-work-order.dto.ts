@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsEnum, IsUUID } from 'class-validator';
+import { IsString, IsOptional, IsEnum, IsUUID, IsNumber, Min, Max, IsDateString } from 'class-validator';
 import { Priority } from '@prisma/client';
 
 export class CreateWorkOrderDto {
@@ -21,17 +21,23 @@ export class CreateWorkOrderDto {
   @IsOptional()
   location?: string;
 
-  @IsString()
+  @IsDateString()
   @IsOptional()
   scheduledStart?: string;
 
-  @IsString()
+  @IsDateString()
   @IsOptional()
   scheduledEnd?: string;
 
+  @IsNumber()
+  @Min(-90)
+  @Max(90)
   @IsOptional()
   latitude?: number;
 
+  @IsNumber()
+  @Min(-180)
+  @Max(180)
   @IsOptional()
   longitude?: number;
 }

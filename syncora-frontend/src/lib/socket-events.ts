@@ -1,6 +1,6 @@
 export const SOCKET_EVENTS = {
-  JOB_ASSIGNED: 'job_assigned',
-  STATUS_UPDATED: 'status_updated',
-  TECHNICIAN_LOCATION: 'technician_location',
-  SYSTEM_ALERT: 'system_alert',
+  STATUS_CHANGED: 'workOrder.statusChanged',
+  ASSIGNED: 'workOrder.assigned',
+  NOTIFICATION_NEW: 'notification.new',
+  LOCATION_UPDATE: 'location.update',
 } as const;

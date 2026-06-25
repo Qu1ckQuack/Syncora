@@ -13,9 +13,7 @@ import { JwtStrategy } from './strategies/jwt.strategy';
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
-        // Hardcoded: Remove fallback in production — JWT_SECRET must be set in env
-        secret: configService.get<string>('JWT_SECRET', 'dev-jwt-secret'),
-        // Hardcoded: Make configurable via env (JWT_ACCESS_EXPIRY)
+        secret: configService.getOrThrow<string>('JWT_SECRET'),
         signOptions: { expiresIn: '15m' },
       }),
     }),

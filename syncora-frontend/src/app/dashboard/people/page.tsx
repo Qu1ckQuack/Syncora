@@ -7,6 +7,7 @@ import { ListSkeleton } from '@/components/shared/Skeleton';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { Search, Users, Wrench, Shield, ShieldOff, Trash2, Pencil, Loader2, X, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useToastStore } from '@/lib/toast-store';
 
 const statusColors: Record<string, string> = {
   ONLINE: 'bg-emerald-500',
@@ -51,12 +52,14 @@ export default function PeoplePage() {
     await updateUserStatus.mutateAsync({ id, isActive: !currentlyActive });
   };
 
+  const addToast = useToastStore((s) => s.addToast);
+
   const handleDelete = async (id: string) => {
     try {
       await deleteUser.mutateAsync(id);
       setConfirmDelete(null);
     } catch {
-      alert('Cannot delete this user. They have related records. Use ban instead.');
+      addToast({ type: 'error', title: 'Cannot delete user', message: 'This user has related records. Use ban instead.', duration: 5000 });
       setConfirmDelete(null);
     }
   };

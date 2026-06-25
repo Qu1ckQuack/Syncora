@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { getSocket, disconnectSocket } from './socket-client';
 import { useToastStore } from './toast-store';
 import { useConnectionStore } from './use-connection-status';
@@ -13,6 +13,8 @@ export function useSocket(onEvent?: () => void) {
   const [status, setStatus] = useState<SocketStatus>('disconnected');
   const qc = useQueryClient();
   const addToast = useToastStore((s) => s.addToast);
+  const onEventRef = useRef(onEvent);
+  onEventRef.current = onEvent;
 
   const handleStatusChange = useCallback((newStatus: SocketStatus) => {
     setStatus(newStatus);
@@ -22,8 +24,8 @@ export function useSocket(onEvent?: () => void) {
   }, [addToast]);
 
   const notify = useCallback(() => {
-    onEvent?.();
-  }, [onEvent]);
+    onEventRef.current?.();
+  }, []);
 
   const setConnectionStatus = useConnectionStore((s) => s.setStatus);
 
@@ -88,7 +90,7 @@ export function useSocket(onEvent?: () => void) {
       socket.off('notification.new', onNotification);
       socket.off('location.update', onLocationUpdate);
     };
-  }, [qc, addToast, handleStatusChange, notify, setConnectionStatus]);
+  }, [qc, addToast, handleStatusChange, setConnectionStatus]);
 
   return { status };
 }

@@ -12,16 +12,25 @@ export default function RegisterPage() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
+  const [isPending, setIsPending] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    if (password !== confirmPassword) {
+      setError('Passwords do not match.');
+      return;
+    }
+    setIsPending(true);
     try {
       await register(name, email, password);
       router.push('/dashboard/overview');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Registration failed');
+    } finally {
+      setIsPending(false);
     }
   };
 
@@ -113,11 +122,28 @@ export default function RegisterPage() {
             <p className="text-xs text-muted-foreground">Minimum 6 characters</p>
           </div>
 
+          <div className="space-y-2">
+            <label htmlFor="confirmPassword" className="text-sm font-medium">
+              Confirm Password
+            </label>
+            <input
+              id="confirmPassword"
+              type="password"
+              autoComplete="new-password"
+              required
+              minLength={6}
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-syncora-500 focus-visible:ring-offset-2"
+            />
+          </div>
+
           <button
             type="submit"
-            className="w-full rounded-md bg-syncora-500 px-4 py-2 text-sm font-medium text-white hover:bg-syncora-600 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-syncora-500 focus-visible:ring-offset-2"
+            disabled={isPending}
+            className="w-full rounded-md bg-syncora-500 px-4 py-2 text-sm font-medium text-white hover:bg-syncora-600 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-syncora-500 focus-visible:ring-offset-2 disabled:opacity-50"
           >
-            Create Account
+            {isPending ? 'Creating account…' : 'Create Account'}
           </button>
         </form>
 

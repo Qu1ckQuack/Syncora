@@ -21,8 +21,10 @@ export class AnalyticsController {
     @Query('days') days?: string,
     @Query('period') period?: string,
   ) {
+    const parsed = parseInt(days || '30', 10);
+    const safeDays = isNaN(parsed) ? 30 : Math.min(parsed, 365);
     return this.analyticsService.getCompletionTrend(
-      Math.min(parseInt(days || '30', 10), 365),
+      safeDays,
       period || 'daily',
       user,
     );
@@ -39,8 +41,8 @@ export class AnalyticsController {
   @UseGuards(RolesGuard)
   @Roles('MODERATOR')
   getAlertFrequency(@Query('days') days?: string) {
-    return this.analyticsService.getAlertFrequency(
-      Math.min(parseInt(days || '30', 10), 365),
-    );
+    const parsed = parseInt(days || '30', 10);
+    const safeDays = isNaN(parsed) ? 30 : Math.min(parsed, 365);
+    return this.analyticsService.getAlertFrequency(safeDays);
   }
 }

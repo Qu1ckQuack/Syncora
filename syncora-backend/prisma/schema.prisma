@@ -38,8 +38,10 @@ enum Priority {
 enum NotificationType {
   JOB_ASSIGNED
   EN_ROUTE
+  IN_PROGRESS
   DELAY_ALERT
   JOB_COMPLETED
+  CANCELLED
   SYSTEM_ERROR
 }
 
@@ -167,6 +169,13 @@ model TechnicianLocation {
 
   @@index([technicianId, timestamp])
   @@map("technician_locations")
+}
+
+model WorkOrderCounter {
+  id  String @id
+  seq Int
+
+  @@map("work_order_counters")
 }
 
 model NotificationPreference {

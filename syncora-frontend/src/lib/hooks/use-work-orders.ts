@@ -31,7 +31,10 @@ async function updateStatus({
     body: JSON.stringify({ status, note }),
     credentials: 'include',
   });
-  if (!res.ok) throw new Error('Failed to update status');
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.message || 'Failed to update status');
+  }
   return res.json();
 }
 

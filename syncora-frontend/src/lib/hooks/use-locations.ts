@@ -5,13 +5,13 @@ import { useConnectionStore } from '@/lib/use-connection-status';
 import type { TechnicianLocation } from '@/lib/types';
 
 async function fetchLatestByTechnician(technicianId: string): Promise<TechnicianLocation | null> {
-  const res = await fetch(`/api/locations/technician/${technicianId}`);
+  const res = await fetch(`/api/locations/technician/${technicianId}`, { credentials: 'include' });
   if (!res.ok) return null;
   return res.json();
 }
 
 async function fetchAllTechnicianLocations(): Promise<(TechnicianLocation & { technician: { id: string; name: string } })[]> {
-  const res = await fetch('/api/users?role=TECHNICIAN');
+  const res = await fetch('/api/users?role=TECHNICIAN', { credentials: 'include' });
   if (!res.ok) return [];
   const users: { id: string; name: string }[] = await res.json();
   const locations = await Promise.all(

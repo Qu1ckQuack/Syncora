@@ -22,8 +22,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         (req: Request) => req?.cookies?.access_token ?? null,
       ]),
       ignoreExpiration: false,
-      // Hardcoded: Remove fallback in production — JWT_SECRET must be set in env
-      secretOrKey: configService.get<string>('JWT_SECRET', 'dev-jwt-secret'),
+      secretOrKey: configService.getOrThrow<string>('JWT_SECRET'),
     });
   }
 

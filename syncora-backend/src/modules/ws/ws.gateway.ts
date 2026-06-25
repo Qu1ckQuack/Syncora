@@ -8,7 +8,7 @@ import {
 import { Server, Socket } from 'socket.io';
 import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import * as jwt from 'jsonwebtoken';
+import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../../prisma/prisma.service';
 
 interface JwtPayload {
@@ -19,7 +19,6 @@ interface JwtPayload {
 
 @WebSocketGateway({
   cors: {
-    // Hardcoded: Remove fallback in production — FRONTEND_URL must be set in env
     origin: process.env.FRONTEND_URL || 'http://localhost:3000',
     credentials: true,
   },
@@ -29,11 +28,28 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect {
   server!: Server;
 
   private readonly logger = new Logger(WsGateway.name);
+  private readonly locationRateLimit = new Map<string, number[]>();
+  private static readonly LOCATION_RATE_MAX = 1;
+  private static readonly LOCATION_RATE_WINDOW = 1000;
+  private rateLimitCleanupInterval: ReturnType<typeof setInterval> | null = null;
 
   constructor(
     private configService: ConfigService,
     private prisma: PrismaService,
-  ) {}
+    private jwtService: JwtService,
+  ) {
+    this.rateLimitCleanupInterval = setInterval(() => {
+      const now = Date.now();
+      for (const [key, timestamps] of this.locationRateLimit.entries()) {
+        const valid = timestamps.filter(t => now - t < WsGateway.LOCATION_RATE_WINDOW);
+        if (valid.length === 0) {
+          this.locationRateLimit.delete(key);
+        } else {
+          this.locationRateLimit.set(key, valid);
+        }
+      }
+    }, 60000);
+  }
 
   private parseCookies(
     cookieHeader: string | undefined,
@@ -58,12 +74,7 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
 
     try {
-      // Hardcoded: Remove fallback in production — JWT_SECRET must be set in env
-      const secret = this.configService.get<string>(
-        'JWT_SECRET',
-        'dev-jwt-secret',
-      );
-      const payload = jwt.verify(token, secret) as JwtPayload;
+      const payload = this.jwtService.verify<JwtPayload>(token);
       client.data.user = {
         id: payload.sub,
         email: payload.email,
@@ -98,6 +109,16 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const user = client.data.user;
     if (!user || user.role !== 'TECHNICIAN') return;
 
+    const now = Date.now();
+    const userTimestamps = this.locationRateLimit.get(user.id) || [];
+    const recent = userTimestamps.filter(t => now - t < WsGateway.LOCATION_RATE_WINDOW);
+    if (recent.length >= WsGateway.LOCATION_RATE_MAX) {
+      this.logger.warn(`Location rate limit exceeded for user ${user.id}`);
+      return;
+    }
+    recent.push(now);
+    this.locationRateLimit.set(user.id, recent);
+
     const location = await this.prisma.technicianLocation.create({
       data: {
         technicianId: user.id,
@@ -109,16 +130,20 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect {
     });
 
     this.emitToRole('MODERATOR', 'location.update', location);
-    this.emitToRole('TECHNICIAN', 'location.update', location);
 
     if (payload.workOrderId) {
       const order = await this.prisma.workOrder.findUnique({
         where: { id: payload.workOrderId },
-        select: { customerId: true },
+        select: { customerId: true, technicianId: true },
       });
       if (order) {
         this.emitToUser(order.customerId, 'location.update', location);
+        if (order.technicianId && order.technicianId !== user.id) {
+          this.emitToUser(order.technicianId, 'location.update', location);
+        }
       }
+    } else {
+      this.emitToUser(user.id, 'location.update', location);
     }
   }
 

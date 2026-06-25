@@ -17,7 +17,7 @@ export class UsersService {
   constructor(private prisma: PrismaService) {}
 
   async findAll(role?: string) {
-    const where = role ? { role: role as any } : {};
+    const where = role ? { role: role as 'MODERATOR' | 'TECHNICIAN' | 'CUSTOMER' } : {};
     return this.prisma.user.findMany({
       where,
       select: {

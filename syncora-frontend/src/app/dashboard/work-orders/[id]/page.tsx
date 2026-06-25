@@ -1,11 +1,12 @@
 'use client';
 
-import { use, useState } from 'react';
+import { use, useState, useMemo } from 'react';
 import { useWorkOrder, useUpdateStatus } from '@/lib/hooks/use-work-orders';
 import { useAuthStore } from '@/lib/auth-store';
 import { StatusPill } from '@/components/shared/StatusPill';
 import { ProgressTracker } from '@/components/shared/ProgressTracker';
 import { CardSkeleton } from '@/components/shared/Skeleton';
+import { getValidTransitions } from '@/lib/status-transitions';
 import { ArrowLeft, Clock, User, MapPin, Calendar, History } from 'lucide-react';
 import Link from 'next/link';
 
@@ -15,6 +16,11 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
   const { data: order, isLoading } = useWorkOrder(id);
   const updateStatus = useUpdateStatus();
   const [selectedStatus, setSelectedStatus] = useState('');
+
+  const validTransitions = useMemo(
+    () => order ? getValidTransitions(order.status, user?.role ?? 'CUSTOMER') : [],
+    [order, user?.role],
+  );
 
   if (isLoading) return <CardSkeleton />;
   if (!order) return <p className="text-muted-foreground">Work order not found.</p>;
@@ -114,11 +120,11 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
                 className="rounded-md border border-border bg-card px-3 py-2 text-sm outline-none focus:border-syncora-500"
               >
                 <option value="">Select status…</option>
-                <option value="EN_ROUTE">En Route</option>
-                <option value="IN_PROGRESS">In Progress</option>
-                <option value="COMPLETED">Completed</option>
-                <option value="DELAYED">Delayed</option>
-                {isModerator && <option value="CANCELLED">Cancel</option>}
+                {validTransitions.map((s) => (
+                  <option key={s} value={s}>
+                    {s === 'EN_ROUTE' ? 'En Route' : s === 'IN_PROGRESS' ? 'In Progress' : s === 'COMPLETED' ? 'Completed' : s === 'DELAYED' ? 'Delayed' : s === 'CANCELLED' ? 'Cancel' : s}
+                  </option>
+                ))}
               </select>
               <button
                 onClick={handleStatusUpdate}
@@ -128,7 +134,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
                 {updateStatus.isPending ? 'Updating…' : 'Update'}
               </button>
               {updateStatus.isError && (
-                <p className="text-xs text-red-500">Failed to update status</p>
+                <p className="text-xs text-red-500">{updateStatus.error?.message ?? 'Failed to update status'}</p>
               )}
             </div>
           </div>

@@ -3,6 +3,7 @@ import { ValidationPipe, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { IoAdapter } from '@nestjs/platform-socket.io';
 import cookieParser from 'cookie-parser';
+import helmet from 'helmet';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
@@ -17,6 +18,7 @@ async function bootstrap() {
     credentials: true,
   });
 
+  app.use(helmet());
   app.use(cookieParser());
   app.useWebSocketAdapter(new IoAdapter(app));
 
