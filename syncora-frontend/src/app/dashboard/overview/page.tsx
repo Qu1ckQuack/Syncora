@@ -12,10 +12,12 @@ import { useNotifications } from '@/lib/hooks/use-notifications';
 import { useAnalyticsOverview } from '@/lib/hooks/use-analytics';
 import { ClipboardList, Wrench, CheckCircle2, Clock, AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import type { WorkOrderStatus } from '@/lib/types';
 
 export default function OverviewPage() {
+  const router = useRouter();
   const user = useAuthStore((s) => s.user);
   const { data: orders, isLoading } = useWorkOrders();
   const { data: notifications } = useNotifications();
@@ -107,14 +109,14 @@ export default function OverviewPage() {
                     {filtered.slice(0, 10).map((o) => (
                       <tr
                         key={o.id}
-                        onClick={() => window.location.href = `/dashboard/work-orders/${o.id}`}
+                        onClick={() => router.push(`/dashboard/work-orders/${o.id}`)}
                         className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors cursor-pointer"
                       >
                         <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{o.orderNumber}</td>
                         <td className="px-4 py-3 font-medium">{o.title}</td>
                         <td className="px-4 py-3 hidden sm:table-cell"><StatusPill status={o.status} /></td>
                         <td className="px-4 py-3 hidden md:table-cell"><StatusPill status={o.priority} variant="priority" /></td>
-                        <td className="px-4 py-3 text-muted-foreground hidden lg:table-cell">{o.technician?.name ?? '—'}</td>
+                        <td className="px-4 py-3 text-muted-foreground hidden lg:table-cell">{o.technician?.name ?? '\u2014'}</td>
                       </tr>
                     ))}
                   </tbody>

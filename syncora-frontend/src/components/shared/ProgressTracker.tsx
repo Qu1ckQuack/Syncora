@@ -2,22 +2,38 @@
 
 import { cn } from '@/lib/utils';
 import type { WorkOrderStatus } from '@/lib/types';
-import { Clock, PlayCircle, CheckCircle2, XCircle } from 'lucide-react';
+import { Clock, Navigation, PlayCircle, CheckCircle2, XCircle } from 'lucide-react';
 
 const steps: Array<{ status: WorkOrderStatus; label: string; icon: typeof Clock }> = [
   { status: 'PENDING', label: 'Order Placed', icon: Clock },
+  { status: 'ACCEPTED', label: 'Accepted', icon: CheckCircle2 },
+  { status: 'EN_ROUTE', label: 'En Route', icon: Navigation },
   { status: 'IN_PROGRESS', label: 'In Progress', icon: PlayCircle },
   { status: 'COMPLETED', label: 'Completed', icon: CheckCircle2 },
 ];
 
+const STATUS_WEIGHT: Record<WorkOrderStatus, number> = {
+  PENDING: 0,
+  ACCEPTED: 1,
+  EN_ROUTE: 2,
+  IN_PROGRESS: 3,
+  COMPLETED: 4,
+  DELAYED: 3,
+  DECLINED: -1,
+  CANCELLED: -1,
+};
+
 const currentStepIndex = (status: WorkOrderStatus) => {
+  const weight = STATUS_WEIGHT[status];
+  if (weight === -1) return -1;
   const idx = steps.findIndex((s) => s.status === status);
-  return idx >= 0 ? idx : status === 'CANCELLED' ? -1 : 2;
+  if (idx >= 0) return idx;
+  return weight;
 };
 
 export function ProgressTracker({ status }: { status: WorkOrderStatus }) {
   const current = currentStepIndex(status);
-  const cancelled = status === 'CANCELLED';
+  const cancelled = status === 'CANCELLED' || status === 'DECLINED';
 
   return (
     <div className="w-full">
@@ -67,7 +83,9 @@ export function ProgressTracker({ status }: { status: WorkOrderStatus }) {
       {cancelled && (
         <div className="flex items-center justify-center gap-2 mt-6 text-red-500">
           <XCircle className="h-5 w-5" aria-hidden="true" />
-          <span className="text-sm font-medium">This order was cancelled</span>
+          <span className="text-sm font-medium">
+            This order was {status === 'DECLINED' ? 'declined' : 'cancelled'}
+          </span>
         </div>
       )}
     </div>

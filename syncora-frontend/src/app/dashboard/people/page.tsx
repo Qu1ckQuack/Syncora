@@ -64,7 +64,7 @@ export default function PeoplePage() {
     }
   };
 
-  const isModerator = currentUser?.role === 'MODERATOR';
+  const isHQ = currentUser?.role === 'HQ';
 
   return (
     <div>
@@ -161,7 +161,7 @@ export default function PeoplePage() {
                   </>
                 )}
 
-                {isModerator && editingId !== t.id && (
+                {isHQ && editingId !== t.id && (
                   <div className="flex items-center gap-1 mt-3 pt-2 border-t border-border">
                     <button
                       onClick={() => handleStartEdit(t.id, t.name)}

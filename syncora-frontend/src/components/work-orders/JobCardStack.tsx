@@ -1,13 +1,13 @@
 'use client';
 
 import { useRef, useState, useCallback, type ReactNode } from 'react';
-import { useUpdateStatus } from '@/lib/hooks/use-work-orders';
+import { useRespondToAssignment, useUpdateStatus } from '@/lib/hooks/use-work-orders';
 import { useAuthStore } from '@/lib/auth-store';
 import { NEXT_STATUS, getValidTransitions } from '@/lib/status-transitions';
 import { useToastStore } from '@/lib/toast-store';
 import { OrderCard } from '@/components/shared/OrderCard';
 import { OrderCardSkeleton } from '@/components/shared/OrderCard';
-import { Flag, ChevronRight } from 'lucide-react';
+import { Check, Flag, ChevronRight, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { WorkOrder, WorkOrderStatus } from '@/lib/types';
 
@@ -92,6 +92,7 @@ interface JobCardStackProps {
 export function JobCardStack({ orders, isLoading }: JobCardStackProps) {
   const user = useAuthStore((s) => s.user);
   const updateStatus = useUpdateStatus();
+  const respondToAssignment = useRespondToAssignment();
   const addToast = useToastStore((s) => s.addToast);
 
   if (isLoading) {
@@ -102,7 +103,20 @@ export function JobCardStack({ orders, isLoading }: JobCardStackProps) {
     );
   }
 
-  const canAct = user?.role === 'TECHNICIAN' || user?.role === 'MODERATOR';
+  const canAct = user?.role === 'TECHNICIAN' || user?.role === 'HQ';
+
+  const handleAssignmentResponse = (order: WorkOrder, action: 'accept' | 'decline') => {
+    respondToAssignment.mutate({ id: order.id, action }, {
+      onSuccess: () => {
+        addToast({
+          type: action === 'accept' ? 'success' : 'warning',
+          title: action === 'accept' ? 'Assignment accepted' : 'Assignment declined',
+          message: action === 'accept' ? 'The job is ready to start.' : 'HQ has been notified for reassignment.',
+          duration: 3000,
+        });
+      },
+    });
+  };
 
   const handleSwipeRight = (order: WorkOrder) => {
     if (!canAct) return;
@@ -136,19 +150,47 @@ export function JobCardStack({ orders, isLoading }: JobCardStackProps) {
       {stackOrders.map((order) => {
         const isActive = activeOrder?.id === order.id;
         const transitions = canAct ? getValidTransitions(order.status, user?.role ?? 'CUSTOMER') : [];
+        const canRespond =
+          user?.role === 'TECHNICIAN' &&
+          order.status === 'PENDING' &&
+          order.technicianId === user.id;
 
         const card = (
-          <OrderCard
-            order={order}
-            variant="stack"
-            showNavigate
-            showStatusPicker={transitions.length > 0}
-            validTransitions={transitions}
-            isActive={isActive}
-          />
+          <div className="rounded-lg border border-border bg-card">
+            <OrderCard
+              order={order}
+              variant="stack"
+              showNavigate
+              showStatusPicker={!canRespond && transitions.length > 0}
+              validTransitions={transitions}
+              isActive={isActive}
+            />
+            {canRespond && (
+              <div className="flex gap-2 border-t border-border p-3">
+                <button
+                  type="button"
+                  onClick={() => handleAssignmentResponse(order, 'accept')}
+                  disabled={respondToAssignment.isPending}
+                  className="inline-flex min-h-[40px] flex-1 items-center justify-center gap-2 rounded-md bg-emerald-600 px-3 text-sm font-medium text-white transition-colors hover:bg-emerald-700 disabled:opacity-50"
+                >
+                  <Check className="h-4 w-4" aria-hidden="true" />
+                  Accept
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleAssignmentResponse(order, 'decline')}
+                  disabled={respondToAssignment.isPending}
+                  className="inline-flex min-h-[40px] flex-1 items-center justify-center gap-2 rounded-md border border-border px-3 text-sm font-medium transition-colors hover:bg-accent disabled:opacity-50"
+                >
+                  <X className="h-4 w-4" aria-hidden="true" />
+                  Decline
+                </button>
+              </div>
+            )}
+          </div>
         );
 
-        if (canAct && transitions.length > 0) {
+        if (!canRespond && canAct && transitions.length > 0) {
           return (
             <SwipeableCard
               key={order.id}

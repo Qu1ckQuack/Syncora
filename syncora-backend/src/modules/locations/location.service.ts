@@ -5,14 +5,25 @@ import { PrismaService } from '../../prisma/prisma.service';
 export class LocationService {
   constructor(private prisma: PrismaService) {}
 
-  async upsert(data: {
-    technicianId: string;
-    workOrderId?: string;
-    latitude: number;
-    longitude: number;
-    accuracy?: number;
-  }) {
-    return this.prisma.technicianLocation.create({ data });
+  async getAllTechniciansWithLatestLocation() {
+    return this.prisma.user.findMany({
+      where: { role: 'TECHNICIAN', isActive: true },
+      select: {
+        id: true,
+        name: true,
+        technicianStatus: true,
+        technicianLocations: {
+          orderBy: { timestamp: 'desc' },
+          take: 1,
+          select: {
+            latitude: true,
+            longitude: true,
+            accuracy: true,
+            timestamp: true,
+          },
+        },
+      },
+    });
   }
 
   async getLatestByTechnician(technicianId: string) {

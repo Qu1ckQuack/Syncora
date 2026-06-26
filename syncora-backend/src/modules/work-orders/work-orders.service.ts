@@ -3,37 +3,29 @@ import {
   NotFoundException,
   BadRequestException,
   ForbiddenException,
-  Logger,
 } from '@nestjs/common';
 import { WorkOrderStatus, NotificationType } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
-import { WsGateway } from '../../modules/ws/ws.gateway';
-import { NotificationsService } from '../../modules/notifications/notifications.service';
+import { GeocodingService } from '../../common/geocoding.service';
+import { WorkOrderEventsService } from './work-order-events.service';
 import { CreateWorkOrderDto } from './dto/create-work-order.dto';
 import { UpdateWorkOrderDto } from './dto/update-work-order.dto';
 import { AssignWorkOrderDto } from './dto/assign-work-order.dto';
 import { UpdateStatusDto } from './dto/update-status.dto';
-
-const VALID_TRANSITIONS: Record<WorkOrderStatus, WorkOrderStatus[]> = {
-  PENDING: ['EN_ROUTE', 'DELAYED', 'CANCELLED'],
-  EN_ROUTE: ['IN_PROGRESS', 'DELAYED', 'CANCELLED'],
-  IN_PROGRESS: ['COMPLETED', 'DELAYED', 'CANCELLED'],
-  DELAYED: ['PENDING', 'EN_ROUTE', 'IN_PROGRESS', 'CANCELLED'],
-  COMPLETED: [],
-  CANCELLED: [],
-};
+import { VALID_TRANSITIONS, WORK_ORDER_INCLUDE } from './work-order.constants';
 
 @Injectable()
 export class WorkOrdersService {
-  private readonly logger = new Logger(WorkOrdersService.name);
-
   constructor(
     private prisma: PrismaService,
-    private wsGateway: WsGateway,
-    private notificationsService: NotificationsService,
+    private geocodingService: GeocodingService,
+    private eventsService: WorkOrderEventsService,
   ) {}
 
-  async create(dto: CreateWorkOrderDto, user: { id: string; role: string }) {
+  async create(
+    dto: CreateWorkOrderDto,
+    user: { id: string; role: string },
+  ) {
     const orderNumber = await this.generateOrderNumber();
 
     if (user.role !== 'CUSTOMER' && !dto.customerId) {
@@ -44,16 +36,7 @@ export class WorkOrdersService {
 
     const customerId = user.role === 'CUSTOMER' ? user.id : dto.customerId!;
 
-    let lat: number | undefined;
-    let lng: number | undefined;
-
-    if (dto.location && !dto.latitude && !dto.longitude) {
-      const coords = await this.geocodeLocation(dto.location);
-      if (coords) {
-        lat = coords.lat;
-        lng = coords.lng;
-      }
-    }
+    const { lat, lng } = await this.geocodingService.resolveCoordinates(dto);
 
     const order = await this.prisma.workOrder.create({
       data: {
@@ -73,14 +56,13 @@ export class WorkOrdersService {
       },
     });
 
-    await this.prisma.statusHistory.create({
-      data: {
-        workOrderId: order.id,
-        toStatus: 'PENDING',
-        changedById: user.id,
-        note: 'Order created',
-      },
-    });
+    await this.eventsService.recordStatusChange(
+      order.id,
+      'PENDING',
+      'PENDING',
+      user.id,
+      'Order created',
+    );
 
     await this.prisma.auditLog.create({
       data: {
@@ -94,16 +76,13 @@ export class WorkOrdersService {
 
     return this.prisma.workOrder.findUnique({
       where: { id: order.id },
-      include: {
-        customer: { select: { id: true, name: true, email: true } },
-        technician: { select: { id: true, name: true } },
-      },
+      include: WORK_ORDER_INCLUDE,
     });
   }
 
   async findAll(user: { id: string; role: string }) {
     const where =
-      user.role === 'MODERATOR'
+      user.role === 'HQ'
         ? {}
         : user.role === 'TECHNICIAN'
           ? { technicianId: user.id }
@@ -111,10 +90,7 @@ export class WorkOrdersService {
 
     return this.prisma.workOrder.findMany({
       where,
-      include: {
-        customer: { select: { id: true, name: true, email: true } },
-        technician: { select: { id: true, name: true } },
-      },
+      include: WORK_ORDER_INCLUDE,
       orderBy: { createdAt: 'desc' },
     });
   }
@@ -123,8 +99,7 @@ export class WorkOrdersService {
     const order = await this.prisma.workOrder.findUnique({
       where: { id },
       include: {
-        customer: { select: { id: true, name: true, email: true } },
-        technician: { select: { id: true, name: true } },
+        ...WORK_ORDER_INCLUDE,
         statusHistory: {
           include: { changedBy: { select: { id: true, name: true } } },
           orderBy: { createdAt: 'asc' },
@@ -133,7 +108,6 @@ export class WorkOrdersService {
     });
 
     if (!order) throw new NotFoundException('Work order not found');
-    this.checkAccess(order, user);
     return order;
   }
 
@@ -141,20 +115,19 @@ export class WorkOrdersService {
     const order = await this.prisma.workOrder.findUnique({ where: { id } });
     if (!order) throw new NotFoundException('Work order not found');
 
-    let lat: number | undefined;
-    let lng: number | undefined;
-
-    if (
+    const needsGeocode =
       dto.location &&
       dto.location !== order.location &&
       !dto.latitude &&
-      !dto.longitude
-    ) {
-      const coords = await this.geocodeLocation(dto.location);
-      if (coords) {
-        lat = coords.lat;
-        lng = coords.lng;
-      }
+      !dto.longitude;
+
+    let lat: number | undefined;
+    let lng: number | undefined;
+
+    if (needsGeocode) {
+      const coords = await this.geocodingService.resolveCoordinates(dto);
+      lat = coords.lat;
+      lng = coords.lng;
     }
 
     const updated = await this.prisma.workOrder.update({
@@ -169,12 +142,11 @@ export class WorkOrdersService {
         scheduledStart: dto.scheduledStart
           ? new Date(dto.scheduledStart)
           : undefined,
-        scheduledEnd: dto.scheduledEnd ? new Date(dto.scheduledEnd) : undefined,
+        scheduledEnd: dto.scheduledEnd
+          ? new Date(dto.scheduledEnd)
+          : undefined,
       },
-      include: {
-        customer: { select: { id: true, name: true, email: true } },
-        technician: { select: { id: true, name: true } },
-      },
+      include: WORK_ORDER_INCLUDE,
     });
 
     await this.prisma.auditLog.create({
@@ -193,7 +165,9 @@ export class WorkOrdersService {
     const order = await this.prisma.workOrder.findUnique({ where: { id } });
     if (!order) throw new NotFoundException('Work order not found');
 
-    const technician = await this.prisma.user.findUnique({ where: { id: dto.technicianId } });
+    const technician = await this.prisma.user.findUnique({
+      where: { id: dto.technicianId },
+    });
     if (!technician || technician.role !== 'TECHNICIAN') {
       throw new BadRequestException('User is not a technician');
     }
@@ -201,10 +175,7 @@ export class WorkOrdersService {
     const updated = await this.prisma.workOrder.update({
       where: { id },
       data: { technicianId: dto.technicianId },
-      include: {
-        customer: { select: { id: true, name: true, email: true } },
-        technician: { select: { id: true, name: true } },
-      },
+      include: WORK_ORDER_INCLUDE,
     });
 
     await this.prisma.auditLog.create({
@@ -217,33 +188,133 @@ export class WorkOrdersService {
       },
     });
 
-    await this.notificationsService.create({
-      userId: dto.technicianId,
-      type: NotificationType.JOB_ASSIGNED,
-      title: 'New Job Assigned',
-      message: `${order.title} has been assigned to you.`,
-      workOrderId: id,
+    await this.eventsService.notifyUser(
+      dto.technicianId,
+      NotificationType.JOB_ASSIGNED,
+      'New Job Assigned',
+      `${order.title} has been assigned to you.`,
+      id,
+    );
+
+    await this.eventsService.notifyUser(
+      order.customerId,
+      NotificationType.JOB_ASSIGNED,
+      'Technician Assigned',
+      `A technician has been assigned to ${order.title}.`,
+      id,
+    );
+
+    this.eventsService.emitAssigned(
+      dto.technicianId,
+      id,
+      order.orderNumber,
+      order.title,
+    );
+    this.eventsService.emitAssigned(
+      order.customerId,
+      id,
+      order.orderNumber,
+      order.title,
+    );
+
+    return updated;
+  }
+
+  async accept(id: string, user: { id: string; role: string }) {
+    const order = await this.prisma.workOrder.findUnique({ where: { id } });
+    if (!order) throw new NotFoundException('Work order not found');
+    if (order.technicianId !== user.id) {
+      throw new ForbiddenException(
+        'Only the assigned technician can accept this work order',
+      );
+    }
+    if (order.status !== 'PENDING') {
+      throw new BadRequestException(
+        `Cannot accept work order with status ${order.status}`,
+      );
+    }
+
+    const updated = await this.prisma.workOrder.update({
+      where: { id },
+      data: { status: 'ACCEPTED' },
+      include: WORK_ORDER_INCLUDE,
     });
 
-    await this.notificationsService.create({
-      userId: order.customerId,
-      type: NotificationType.JOB_ASSIGNED,
-      title: 'Technician Assigned',
-      message: `A technician has been assigned to ${order.title}.`,
-      workOrderId: id,
+    await this.eventsService.recordStatusChange(
+      id,
+      order.status,
+      'ACCEPTED',
+      user.id,
+      'Technician accepted assignment',
+    );
+    await this.eventsService.notifyHqUsers(
+      NotificationType.JOB_ASSIGNED,
+      'Assignment Accepted',
+      `${order.title} was accepted by the assigned technician.`,
+      id,
+    );
+    await this.eventsService.notifyUser(
+      order.customerId,
+      NotificationType.JOB_ASSIGNED,
+      'Technician Accepted',
+      `The technician accepted ${order.title}.`,
+      id,
+    );
+    this.eventsService.emitStatusChanged(order, 'ACCEPTED', user.id);
+
+    return updated;
+  }
+
+  async decline(id: string, user: { id: string; role: string }) {
+    const order = await this.prisma.workOrder.findUnique({ where: { id } });
+    if (!order) throw new NotFoundException('Work order not found');
+    if (order.technicianId !== user.id) {
+      throw new ForbiddenException(
+        'Only the assigned technician can decline this work order',
+      );
+    }
+    if (order.status !== 'PENDING') {
+      throw new BadRequestException(
+        `Cannot decline work order with status ${order.status}`,
+      );
+    }
+
+    const updated = await this.prisma.workOrder.update({
+      where: { id },
+      data: { status: 'DECLINED', technicianId: null },
+      include: WORK_ORDER_INCLUDE,
     });
 
-    this.wsGateway.emitToUser(dto.technicianId, 'workOrder.assigned', {
-      workOrderId: id,
-      orderNumber: order.orderNumber,
-      title: order.title,
+    await this.eventsService.recordStatusChange(
+      id,
+      order.status,
+      'DECLINED',
+      user.id,
+      'Technician declined assignment',
+    );
+    await this.prisma.auditLog.create({
+      data: {
+        action: 'ASSIGNMENT_DECLINED',
+        entityType: 'WORK_ORDER',
+        entityId: id,
+        userId: user.id,
+        metadata: { previousTechnicianId: user.id },
+      },
     });
-
-    this.wsGateway.emitToUser(order.customerId, 'workOrder.assigned', {
-      workOrderId: id,
-      orderNumber: order.orderNumber,
-      title: order.title,
-    });
+    await this.eventsService.notifyHqUsers(
+      NotificationType.DELAY_ALERT,
+      'Assignment Declined',
+      `${order.title} was declined and needs reassignment.`,
+      id,
+    );
+    await this.eventsService.notifyUser(
+      order.customerId,
+      NotificationType.DELAY_ALERT,
+      'Technician Reassignment Needed',
+      `${order.title} needs a new technician assignment.`,
+      id,
+    );
+    this.eventsService.emitStatusChanged(order, 'DECLINED', user.id);
 
     return updated;
   }
@@ -256,7 +327,14 @@ export class WorkOrdersService {
     const order = await this.prisma.workOrder.findUnique({ where: { id } });
     if (!order) throw new NotFoundException('Work order not found');
 
-    if (user.role !== 'MODERATOR' && order.technicianId !== user.id) {
+    if (dto.status === 'ACCEPTED') {
+      return this.accept(id, user);
+    }
+    if (dto.status === 'DECLINED') {
+      return this.decline(id, user);
+    }
+
+    if (user.role !== 'HQ' && order.technicianId !== user.id) {
       throw new ForbiddenException(
         'Only the assigned technician can update status',
       );
@@ -269,8 +347,8 @@ export class WorkOrdersService {
       );
     }
 
-    if (dto.status === 'CANCELLED' && user.role !== 'MODERATOR') {
-      throw new ForbiddenException('Only moderators can cancel work orders');
+    if (dto.status === 'CANCELLED' && user.role !== 'HQ') {
+      throw new ForbiddenException('Only HQs can cancel work orders');
     }
 
     const updateData: Record<string, unknown> = { status: dto.status };
@@ -284,60 +362,30 @@ export class WorkOrdersService {
     const updated = await this.prisma.workOrder.update({
       where: { id },
       data: updateData,
-      include: {
-        customer: { select: { id: true, name: true, email: true } },
-        technician: { select: { id: true, name: true } },
-      },
+      include: WORK_ORDER_INCLUDE,
     });
 
-    await this.prisma.statusHistory.create({
-      data: {
-        workOrderId: id,
-        fromStatus: order.status,
-        toStatus: dto.status,
-        changedById: user.id,
-        note: dto.note,
-      },
-    });
+    await this.eventsService.recordStatusChange(
+      id,
+      order.status,
+      dto.status,
+      user.id,
+      dto.note,
+    );
 
-    await this.prisma.auditLog.create({
-      data: {
-        action: 'STATUS_UPDATE',
-        entityType: 'WORK_ORDER',
-        entityId: id,
-        userId: user.id,
-        metadata: { from: order.status, to: dto.status },
-      },
-    });
-
-    const notificationType = this.mapStatusToNotificationType(dto.status);
+    const notificationType =
+      this.eventsService.mapStatusToNotificationType(dto.status);
     if (notificationType) {
-      await this.notificationsService.create({
-        userId: order.customerId,
-        type: notificationType,
-        title: this.getNotificationTitle(dto.status),
-        message: `${order.title} status updated to ${dto.status.toLowerCase().replace('_', ' ')}.`,
-        workOrderId: id,
-      });
+      await this.eventsService.notifyUser(
+        order.customerId,
+        notificationType,
+        this.eventsService.getNotificationTitle(dto.status),
+        `${order.title} status updated to ${dto.status.toLowerCase().replace('_', ' ')}.`,
+        id,
+      );
     }
 
-    this.wsGateway.emitToUser(order.customerId, 'workOrder.statusChanged', {
-      workOrderId: id,
-      orderNumber: order.orderNumber,
-      fromStatus: order.status,
-      toStatus: dto.status,
-      changedBy: user.id,
-    });
-
-    if (order.technicianId) {
-      this.wsGateway.emitToUser(order.technicianId, 'workOrder.statusChanged', {
-        workOrderId: id,
-        orderNumber: order.orderNumber,
-        fromStatus: order.status,
-        toStatus: dto.status,
-        changedBy: user.id,
-      });
-    }
+    this.eventsService.emitStatusChanged(order, dto.status, user.id);
 
     return updated;
   }
@@ -353,52 +401,6 @@ export class WorkOrdersService {
     });
   }
 
-  private checkAccess(
-    order: { customerId: string; technicianId: string | null },
-    user: { id: string; role: string },
-  ) {
-    if (user.role === 'MODERATOR') return;
-    if (user.role === 'TECHNICIAN' && order.technicianId === user.id) return;
-    if (user.role === 'CUSTOMER' && order.customerId === user.id) return;
-    throw new ForbiddenException('Access denied');
-  }
-
-  private mapStatusToNotificationType(
-    status: WorkOrderStatus,
-  ): NotificationType | null {
-    switch (status) {
-      case 'EN_ROUTE':
-        return NotificationType.EN_ROUTE;
-      case 'IN_PROGRESS':
-        return NotificationType.IN_PROGRESS;
-      case 'COMPLETED':
-        return NotificationType.JOB_COMPLETED;
-      case 'DELAYED':
-        return NotificationType.DELAY_ALERT;
-      case 'CANCELLED':
-        return NotificationType.CANCELLED;
-      default:
-        return null;
-    }
-  }
-
-  private getNotificationTitle(status: WorkOrderStatus): string {
-    switch (status) {
-      case 'EN_ROUTE':
-        return 'Technician En Route';
-      case 'IN_PROGRESS':
-        return 'Work In Progress';
-      case 'COMPLETED':
-        return 'Job Completed';
-      case 'DELAYED':
-        return 'Job Delayed';
-      case 'CANCELLED':
-        return 'Job Cancelled';
-      default:
-        return 'Status Updated';
-    }
-  }
-
   private async generateOrderNumber(): Promise<string> {
     const result = await this.prisma.$transaction(async (tx) => {
       const counter = await tx.workOrderCounter.upsert({
@@ -409,23 +411,5 @@ export class WorkOrdersService {
       return `SYN-${counter.seq}`;
     });
     return result;
-  }
-
-  private async geocodeLocation(
-    location: string,
-  ): Promise<{ lat: number; lng: number } | null> {
-    try {
-      const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(location)}&format=json&limit=1`;
-      const res = await fetch(url, {
-        headers: { 'User-Agent': 'Syncora/1.0' },
-      });
-      if (!res.ok) return null;
-      const data = await res.json();
-      if (!data || data.length === 0) return null;
-      return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
-    } catch (err) {
-      this.logger.warn(`Nominatim geocoding failed for "${location}": ${err}`);
-      return null;
-    }
   }
 }

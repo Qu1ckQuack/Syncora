@@ -45,7 +45,7 @@ export default function AnalyticsPage() {
   const { data: techs, isLoading: techsLoading } = useTechnicianPerformance();
   const { data: alerts, isLoading: alertsLoading } = useAlertFrequency(days);
 
-  const isModerator = user?.role === 'MODERATOR';
+  const isModerator = user?.role === 'HQ';
 
   const overviewStats = overview
     ? [

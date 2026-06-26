@@ -1,215 +1,193 @@
-# todo.md — Syncora Task Tracker
+# todo.md — Syncora Implementation Plan
 
 Status legend: `[ ]` Planned · `[~]` In Progress · `[x]` Done · `[-]` Skipped / Deferred
 
 ---
 
-## Phase 1 — Project Foundation
-**Goal:** Local development environment running, database connected, CI-ready.
+## Phase 0 — Foundation
+**Goal:** Schema changes, MODERATOR → HQ rename, DEALER role, new DB models.
 
-- [x] Create NestJS project
-- [x] Create Next.js project
-- [x] Configure Docker Compose with PostgreSQL 16
-- [x] Configure Prisma (schema, datasource, generator)
-- [x] Configure ESLint (backend + frontend)
-- [x] Configure Prettier
-- [x] Configure Husky pre-commit hooks (lint-staged)
-- [x] Configure environment variables (`.env`, `.env.example`)
-- [x] Verify application starts and DB connection succeeds
+### Database & Schema
+- [x] Rename `MODERATOR` → `HQ` in Prisma `Role` enum
+- [x] Add `DEALER` to Prisma `Role` enum
+- [x] Add `Evidence` model: `id`, `workOrderId`, `technicianId`, `url`, `type` (PHOTO/VIDEO), `createdAt`
+- [x] Add `Rating` model: `id`, `workOrderId`, `customerId`, `technicianId`, `score` (1-5), `comment`, `createdAt`
+- [x] Add `Message` model: `id`, `conversationId`, `senderId`, `content`, `createdAt`
+- [x] Add `Conversation` model: `id`, `workOrderId`, `participantIds`, `createdAt`
+- [x] Add `phone`, `address` fields to User model
+- [x] Write Prisma migration
+- [x] Update seed script with DEALER user + all 4 roles
 
-**Exit criteria:** App starts · Database connection verified
+### Backend Rename (MODERATOR → HQ)
+- [x] `auth/guards/roles.guard.ts` — rename MODERATOR → HQ
+- [x] `auth/guards/ownership.guard.ts` — rename MODERATOR → HQ
+- [x] `auth/decorators/roles.decorator.ts` — rename
+- [x] `work-orders/work-orders.service.ts` — rename all MODERATOR refs
+- [x] `work-orders/work-orders.controller.ts` — rename all MODERATOR refs
+- [x] `work-orders/guards/work-order-ownership.guard.ts` — rename
+- [x] `analytics/analytics.controller.ts` — rename
+- [x] `analytics/analytics.service.ts` — rename
+- [x] `users/users.controller.ts` — rename + add DEALER to @Roles() where appropriate
+- [x] `users/users.service.ts` — rename
+- [x] `locations/location.controller.ts` — rename + add DEALER
+- [x] `ws/ws.gateway.ts` — rename
+- [x] `upload/upload.controller.ts` — add DEALER
+- [x] `notifications/notifications.controller.ts` — add DEALER
 
----
+### Frontend Rename + Role Updates
+- [x] `lib/types.ts` — Update `Role` type: `'HQ' | 'TECHNICIAN' | 'CUSTOMER' | 'DEALER'`; add `Rating`, `Evidence`, `Message` interfaces; add `IN_PROGRESS`, `CANCELLED` to `NotificationType`
+- [x] `lib/auth-store.ts` — Update User role type
+- [x] `lib/roles.ts` — Update nav items: HQ (replaces MODERATOR), add DEALER nav
+- [x] `lib/status-transitions.ts` — Rename MODERATOR → HQ
+- [x] `lib/socket-events.ts` — Add `PROOF_UPLOADED`, `RATING_SUBMITTED`, `DEALER_ASSIGNMENT`, `NEW_MESSAGE`
+- [x] `components/layout/auth-guard.tsx` — Rename MODERATOR → HQ, add DEALER
+- [x] `app/dashboard/map/map-view.tsx` — Rename MODERATOR → HQ
+- [x] `app/dashboard/work-orders/page.tsx` — Rename MODERATOR → HQ
+- [x] `app/dashboard/work-orders/[id]/page.tsx` — Rename MODERATOR → HQ
+- [x] `app/dashboard/work-orders/new/page.tsx` — Rename MODERATOR → HQ
+- [x] `app/dashboard/people/page.tsx` — Rename MODERATOR → HQ
+- [x] `app/dashboard/settings/page.tsx` — Rename MODERATOR → HQ
+- [x] `app/dashboard/analytics/page.tsx` — Rename MODERATOR → HQ
 
-## Phase 2 — Database Layer
-**Goal:** Production-ready schema with migrations and seed data.
-
-- [x] Design schema (8 models: User, WorkOrder, StatusHistory, Notification, NotificationPreference, RefreshToken, TechnicianLocation, AuditLog)
-- [x] Write Prisma migrations (5 migrations applied)
-- [x] Write seed script (5 users, 6 orders, notifications, audit logs, preferences)
-- [x] Add indexes on foreign keys and filtered columns
-- [x] Create immutable audit_logs table (append-only)
-- [x] Verify migration runs cleanly from scratch
-
-**Exit criteria:** Migration runs · Seed script works
-
----
-
-## Phase 3 — Authentication & Authorization
-**Goal:** Secure auth system with RBAC enforced on all routes.
-
-- [x] User registration endpoint (`POST /auth/register`) with bcrypt
-- [x] Login endpoint (`POST /auth/login`) — JWT access + refresh in HttpOnly cookies
-- [x] Refresh token rotation endpoint (`POST /auth/refresh`)
-- [x] Logout endpoint — invalidates refresh token server-side
-- [x] JWT auth guard (NestJS)
-- [x] Role guard (`MODERATOR | TECHNICIAN | CUSTOMER`)
-- [x] Ownership guard (customers scoped to their own orders)
-- [x] `@Roles()` and `@CurrentUser()` decorators
-- [x] Frontend `AuthGuard` component (redirects unauthenticated)
-- [x] Login page (`/login`) — email + password, error alert, demo hints
-- [x] Register page (`/register`) — name + email + password (min 6 chars)
-
-**Exit criteria:** Users can authenticate · Unauthorized access blocked at API and UI
-
----
-
-## Phase 4 — Work Order Core
-**Goal:** Full work-order lifecycle from creation to completion.
-
-- [x] Create work order (Moderator + Customer)
-- [x] Edit work order (Moderator)
-- [x] Assign technician to order (Moderator)
-- [x] Technician status update (validated transitions)
-- [x] Status history log per order
-- [x] Customer order tracking view (read-only, scoped to own orders)
-- [x] Audit log entries for: creation, updates, assignment, status changes
-- [x] Work type dropdown (12 predefined types + "Other" free-text)
-
-**Exit criteria:** Moderator manages orders · Technician updates jobs · Customer tracks + creates orders
+**Exit criteria:** Server starts, `Role` enum has `HQ | TECHNICIAN | CUSTOMER | DEALER`, seed creates users for all 4 roles, frontend nav works for each role.
 
 ---
 
-## Phase 5 — Dashboard
-**Goal:** Operational dashboard reflecting live database data.
+## Phase 1 — Technician Accept/Decline
+**Goal:** Technicians can accept or decline assigned work orders.
 
-- [x] Dashboard shell — Sidebar (role-filtered nav), TopBar (search, connection dot, updated-ago, bell, theme), Breadcrumbs
-- [x] Overview page — 4 StatCards (Total, In Progress, Completed, Pending Urgent) with trends
-- [x] Responsive: OrderCard stack on mobile, `<table>` on desktop
-- [x] Work Orders page — filter bar (status pills, search), responsive table
-- [x] AlertsPanel (slideover + sidebar, type icons, read/unread, mark-all-read)
-- [x] People page — technician roster with search, avatar, status, job count
-- [x] People page — inline edit, ban/unban, delete (FK conflict detection)
-- [x] Settings page — notification preferences (persisted), appearance toggle
-- [x] Customer profile — ProgressTracker (3 steps), active order, order history
-- [x] Empty states and skeleton loading for all data-fetching views
-- [x] Mobile bottom tab bar + sidebar drawer
+- [x] Backend: Add `ACCEPTED`, `DECLINED` to WorkOrderStatus enum
+- [x] Backend: Update `VALID_TRANSITIONS` — `PENDING → ACCEPTED`, `PENDING → DECLINED`
+- [x] Backend: Add `PATCH /work-orders/:id/accept` (role: TECHNICIAN, ownership guard)
+- [x] Backend: Add `PATCH /work-orders/:id/decline` (role: TECHNICIAN, ownership guard)
+- [x] Backend: On accept → audit log + notify HQ + customer
+- [x] Backend: On decline → notify HQ, clear technicianId for reassignment
+- [x] Frontend: `JobCard` / `JobCardStack` — Add Accept/Decline buttons for PENDING orders (technician)
+- [x] Frontend: Work-order detail page — Add accept/decline UI for technician
 
-**Exit criteria:** Dashboard reflects live database data across all roles
+**Exit criteria:** Technician sees Accept/Decline on pending orders. HQ notified on decision.
 
 ---
 
-## Phase 6 — Notification System
-**Goal:** In-app notifications with read/unread state, preferences, and toast delivery.
+## Phase 2 — Technician Proof of Repair
+**Goal:** Technicians can upload photo evidence during a job.
 
-- [x] Notification CRUD (create, list, mark read, mark all read)
-- [x] Alert history list in AlertsPanel with type-specific icons
-- [x] Read/unread state persistence (DB)
-- [x] Unread count endpoint + badge in TopBar
-- [x] Toast system — 4 types, auto-dismiss, Zustand store
-- [x] Toast on socket events (connect, disconnect, reconnect)
-- [x] Notification preferences model (email, push, status, assignment booleans)
-- [x] `GET` / `PUT /notifications/preferences` endpoints
-- [x] Settings page toggles persisted to backend
-- [x] Seed script creates default preferences for all users
+- [x] Backend: New `EvidenceModule` (`evidence.module.ts`, `evidence.controller.ts`, `evidence.service.ts`)
+- [x] Backend: `POST /evidence` — Upload file (reuse S3 UploadService), attach to work order + technician
+- [x] Backend: `GET /work-orders/:id/evidence` — List evidence for an order (role-filtered)
+- [x] Backend: Socket emit `workOrder.evidenceAdded` on upload
+- [x] Frontend: `useEvidence.ts` — TanStack Query hook for upload + list
+- [x] Frontend: Work-order detail page — "Add Photo" button for technicians, file picker, progress indicator
+- [x] Frontend: Photo gallery component showing all evidence for an order
+- [x] Frontend: Real-time evidence update via socket event
 
-**Exit criteria:** Users receive notifications · Toasts appear · Preferences persist
+**Exit criteria:** Technician can take/upload photos during a job. Photos stored in S3, linked to work order.
 
 ---
 
-## Phase 7 — Real-time System
-**Goal:** Status updates propagate instantly via WebSocket.
+## Phase 3 — Customer Rating
+**Goal:** Customers can rate the technician after job completion.
 
-- [x] Socket.IO Gateway — JWT auth from cookie, rooms per user + role
-- [x] `emitToUser()`, `emitToRole()`, `broadcast()` methods
-- [x] `useSocket()` hook — connects, listens, reconnects, exposes status
-- [x] Socket events: `notification.new`, `workOrder.statusChanged`, `workOrder.assigned`, `location.update`
-- [x] TanStack Query cache invalidation on all socket events
-- [x] Connection indicator dot (green/amber/red) in TopBar
-- [x] "Last updated X seconds ago" label in TopBar
-- [x] **"Last updated" resets on WS event** — Timer-driven + event-triggered via `useSocket(onEvent)` callback
-- [x] SSE / polling fallback when WebSocket unavailable — Conditional `refetchInterval: 15_000` via `useConnectionStore`
+- [ ] Backend: New `RatingsModule` (`ratings.module.ts`, `ratings.controller.ts`, `ratings.service.ts`)
+- [ ] Backend: `POST /ratings` — Create rating (customer, order must be COMPLETED, one per order)
+- [ ] Backend: `GET /technicians/:id/ratings` — Aggregate ratings for technician profile
+- [ ] Backend: Socket emit `rating.submitted` on new rating
+- [ ] Frontend: Work-order detail after COMPLETED — Star rating UI for customers (1-5)
+- [ ] Frontend: Technician profile page — Show average rating + review count
+- [ ] Frontend: Real-time rating update via socket
 
-**Exit criteria:** Status updates propagate instantly · UI reflects live changes without page refresh
+**Exit criteria:** Customer can rate 1-5 stars with optional comment after job completion.
 
 ---
 
-## Phase 8 — Mobile Responsiveness & Maps
-**Goal:** Complete mobile experience with live technician tracking.
+## Phase 4 — Customer Validate Proof
+**Goal:** Customers can validate technician's proof photos.
 
-- [x] Responsive breakpoints across all pages
-- [x] Bottom tab bar (`< lg`) with role-filtered nav
-- [x] Mobile sidebar drawer (fixed overlay + slide-in)
-- [x] TopBar: expandable search on mobile
-- [x] Work orders: OrderCard stack on mobile, table on desktop
-- [x] Overview: OrderCard stack on mobile, table on desktop
-- [x] Touch targets: 44px min on TopBar buttons, nav triggers, form actions
-- [x] Leaflet map integration (OpenStreetMap tiles, react-leaflet)
-- [x] Map page (`/dashboard/map`) — work order + technician markers with popups
-- [x] LocationPicker on create-order form (click-to-place marker)
-- [x] Backend LocationModule — REST + WebSocket `location.update`
-- [x] TechnicianLocation model + migration
-- [x] Nominatim geocoding on order create/update
-- [x] Swipeable JobCardStack (swipe right complete / left flag) — Pointer-event gestures, next-status advance, flag-as-delayed
-- [x] "Navigate" CTA opening device Maps app — Platform-detected maps:// or Google Maps URL
-- [x] Inline status picker on OrderCard — Valid-transition dropdown, immediate mutation
-- [x] ETA display on OrderCard — From scheduledStart: "ETA: 2:30 PM" / "~45 min" / "Started Xm ago"
+- [ ] Backend: `PATCH /work-orders/:id/evidence/:evidenceId/validate` — Customer marks evidence as validated
+- [ ] Backend: Notification to technician + HQ when validated
+- [ ] Backend: Socket emit `evidence.validated` on validation
+- [ ] Frontend: Work-order detail (customer view) — Photo gallery with "Validate" / "Request more" buttons
+- [ ] Frontend: Toast when new evidence uploaded
 
-**Exit criteria:** Technician workflow completable on mobile · Live map with technician positions
+**Exit criteria:** Customer sees proof photos, can mark them validated.
 
 ---
 
-## Phase 9 — Analytics
-**Goal:** Operational reporting from production data.
+## Phase 5 — Technician Customer Data Access
+**Goal:** Assigned technicians see full customer contact info.
 
-- [x] KPI summary cards (client-side computed from raw work orders — placeholder)
-- [x] Backend analytics module (service + 4 aggregation methods)
-- [x] Order completion metrics (daily/weekly trend endpoint)
-- [x] Technician performance metrics (orders completed, average time)
-- [x] Alert frequency metrics (by notification type)
-- [x] Analytics overview endpoint (`GET /analytics/overview`)
-- [x] Completion trend endpoint (`GET /analytics/trends/completion?days=&period=`)
-- [x] Technician performance endpoint (`GET /analytics/technicians` — MODERATOR)
-- [x] Alert frequency endpoint (`GET /analytics/alerts?days=` — MODERATOR)
-- [x] Frontend analytics hooks (`use-analytics.ts` — 4 TanStack Query hooks)
-- [x] Overview page uses real `completionRate` trend (replaces hardcoded values)
-- [x] Dedicated `/dashboard/analytics` page with period selector, recharts bar charts, tech table
-- [x] Analytics nav item added for MODERATOR role
+- [ ] Backend: Expand customer select in work-order queries to include `phone`, `address` for technician role
+- [ ] Backend: `GET /work-orders/:id/customer` — Dedicated customer info endpoint (technician, order must be assigned)
+- [ ] Frontend: Work-order detail (technician view) — Add "Customer Info" card: name, phone, address, email
+- [ ] Frontend: Call / SMS / Email action buttons (`tel:`, `mailto:`)
 
-**Exit criteria:** Metrics generated from real production data
+**Exit criteria:** Technician sees full customer contact info on assigned orders.
 
 ---
 
-## Phase 10 — Maps Refinement
-**Goal:** Enhanced map features and route visualization.
+## Phase 6 — Dealer Role
+**Goal:** Full dealer workflow — create order with product details, assign to HQ, track progress.
 
-- [x] Map page rendered with Leaflet + OpenStreetMap
-- [x] Work order markers (status-colored, popup with details)
-- [x] Technician markers (status-colored, initial, popup with info)
-- [x] Real-time technician coordinate updates via WebSocket
-- [ ] Polyline routes from technician to work orders
-- [ ] Animated technician marker along route
-- [ ] Destination pin on work order location
-- [ ] ETA badge on technician marker
-- [ ] "Last position updated X min ago" per marker
+### Backend
+- [ ] Add `DEALER` to all `@Roles()` guards where MODERATOR/TECHNICIAN are present (unless inappropriate)
+- [ ] `work-orders.controller.ts` — Dealer-specific `POST /work-orders` (sets `assignedBy` = dealer ID)
+- [ ] `create-work-order.dto.ts` — Add `dealerProductDetail`, `dueDate` fields
+- [ ] `PATCH /work-orders/:id/assign-to-hq` — Dealer assigns order to a specific HQ coordinator
+- [ ] `GET /work-orders` — Scope dealer to orders where `assignedBy` = dealer ID
+- [ ] Notification to HQ on new dealer assignment (`DEALER_ASSIGNMENT`)
+- [ ] Notification to dealer on status changes
+- [ ] Socket events: `workOrder.dealerAssigned`, `workOrder.statusChanged` for dealers
 
-**Exit criteria:** Route visualization with live technician movement
+### Frontend
+- [ ] `roles.ts` — Add "Work Orders" + "New Order" nav items for DEALER
+- [ ] Dealers see their own orders in work-orders list (scoped by `assignedBy`)
+- [ ] Dealer order creation form — Product detail, due date, HQ coordinator select
+- [ ] Dealer tracking view — Read-only status + proof photos + technician info
+
+**Exit criteria:** Dealer logs in, creates order with product details + due date, assigns to HQ, tracks progress.
 
 ---
 
+## Phase 7 — HQ Coordinator Enhancements
+**Goal:** HQ gets dealer assignment notifications, DELAYED monitoring, and enhanced filtering.
+
+- [ ] Backend: `GET /work-orders?source=dealer` — Filter by dealer-created orders
+- [ ] Backend: Notification type `DEALER_ASSIGNMENT` for new dealer orders
+- [ ] Backend: Emit `notification.dealerAssignment` to `role:HQ` room
+- [ ] Frontend: HQ dashboard — "Dealer Assignments" section (pending dealer orders)
+- [ ] Frontend: HQ work-orders page — Filter pill for "Dealer Created"
+- [ ] Frontend: HQ overview — "DELAYED Orders" card with count + list
+- [ ] Frontend: HQ map page — "Show DELAYED only" toggle
+
+**Exit criteria:** HQ gets notified on new dealer orders, can view/filter/assign them, sees DELAYED orders highlighted.
+
 ---
 
-## Phase 11 — API Testing & Bug Fixing
-**Goal:** Comprehensive endpoint testing; all 41 tests passing.
+## Phase 8 — Chat System
+**Goal:** Real-time messaging between Dealer and HQ Coordinator.
 
-- [x] Test suite executed: 41 tests across auth, users, work orders, notifications, locations, RBAC
-- [x] Bug found + fixed: `POST /work-orders` missing `@RolesGuard` — technicians could create orders
-- [x] Bug found + fixed: `PATCH /work-orders/:id/assign` no tech-role validation — could assign to customers
-- [x] Verified: all valid/invalid status transitions enforced (VALID_TRANSITIONS + moderator-only cancel)
-- [x] Verified: ownership guard — customers see own orders, technicians see assigned, moderators see all
-- [x] Verified: refresh token rotation invalidates old tokens
-- [x] Verified: rate limiting on auth endpoints
-- [x] Verified: unauthenticated requests blocked (401) across all guarded endpoints
+### Backend
+- [ ] `chat/chat.module.ts`, `chat.gateway.ts`, `chat.service.ts` — New WebSocket-based chat module
+- [ ] Conversation room naming: `conversation:<orderId>`
+- [ ] `@SubscribeMessage('chat.send')` — Receive + store message in DB + broadcast to room
+- [ ] `@SubscribeMessage('chat.join')` — Join conversation room
+- [ ] `@SubscribeMessage('chat.typing')` — Typing indicator broadcast
+- [ ] `GET /conversations/:orderId` — Load message history
+- [ ] Rate limit: 10 messages/second per user
+- [ ] Authorization: only dealer + assigned HQ can join conversation for an order
 
-**Exit criteria:** All 41 tests pass · 2 security bugs fixed
+### Frontend
+- [ ] `useChat.ts` — Socket-based chat hook (send, receive, typing, history)
+- [ ] `ChatPanel.tsx` — Slideover chat component: message list, input field, typing indicator, unread badge
+- [ ] Add "Chat" button on work-order detail for dealer + HQ roles
+- [ ] Unread message count badge on chat button + nav
+
+**Exit criteria:** Dealer and HQ can exchange real-time messages linked to a work order.
 
 ---
 
 ## Cross-Cutting
-- [x] Profile editing (name, avatar, password) — all roles
-- [x] Avatar upload via AWS S3 (external service marked `Hardcoded:`)
-- [x] Customer order creation (backend + frontend)
-- [x] Moderator user management (edit, ban, delete)
-- [x] Profile nav item visible to all roles
-- [x] `Hardcoded:` comments on all hardcoded values and external services
-- [x] API test suite: 41 endpoint tests passing
+- [ ] Docs: Update `context.md`, `architecture.md`, `development.md` for new roles
+- [ ] Docs: Update `instruction.md` for new features
+- [ ] Tests: Update test suite for new endpoints + roles
+- [ ] Cleanup: Remove all deprecated MODERATOR references

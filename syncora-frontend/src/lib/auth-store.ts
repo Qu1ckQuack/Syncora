@@ -1,12 +1,13 @@
 'use client';
 
 import { create } from 'zustand';
+import { disconnectSocket } from './socket-client';
 
-interface User {
+export interface User {
   id: string;
   email: string;
   name: string;
-  role: 'MODERATOR' | 'TECHNICIAN' | 'CUSTOMER';
+  role: 'HQ' | 'TECHNICIAN' | 'CUSTOMER' | 'DEALER';
   technicianStatus?: string | null;
   avatarUrl?: string | null;
 }
@@ -55,7 +56,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     }
 
     const user = await res.json();
-    set({ user });
+    set({ user, isLoading: false });
   },
 
   register: async (name: string, email: string, password: string) => {
@@ -72,7 +73,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     }
 
     const user = await res.json();
-    set({ user });
+    set({ user, isLoading: false });
   },
 
   logout: async () => {
@@ -82,6 +83,7 @@ export const useAuthStore = create<AuthState>((set) => ({
         credentials: 'include',
       });
     } finally {
+      disconnectSocket();
       set({ user: null });
     }
   },

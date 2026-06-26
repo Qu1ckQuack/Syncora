@@ -108,7 +108,7 @@ export default function SettingsPage() {
         </div>
       </section>
 
-      {user.role === 'MODERATOR' && (
+      {user.role === 'HQ' && (
         <section className="rounded-lg border border-border bg-card divide-y divide-border">
           <div className="flex items-center gap-3 px-4 py-3">
             <Shield className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
@@ -118,7 +118,7 @@ export default function SettingsPage() {
           <div className="px-4 py-3 space-y-2">
             <p className="text-sm font-medium">Role: <span className="text-syncora-500 capitalize">{user.role.toLowerCase()}</span></p>
             <p className="text-xs text-muted-foreground">
-              As a moderator, you have full access to all platform features including order management, user administration, and system settings.
+              As a HQ, you have full access to all platform features including order management, user administration, and system settings.
             </p>
           </div>
 

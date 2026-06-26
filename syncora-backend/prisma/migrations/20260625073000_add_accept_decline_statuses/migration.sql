@@ -1,0 +1,2 @@
+ALTER TYPE "WorkOrderStatus" ADD VALUE 'ACCEPTED';
+ALTER TYPE "WorkOrderStatus" ADD VALUE 'DECLINED';

@@ -19,7 +19,37 @@ import { CurrentUser } from './decorators/current-user.decorator';
 
 @Controller('auth')
 export class AuthController {
+  private readonly ACCESS_TOKEN_MAX_AGE = 15 * 60 * 1000;
+  private readonly REFRESH_TOKEN_MAX_AGE = 7 * 24 * 60 * 60 * 1000;
+
   constructor(private authService: AuthService) {}
+
+  private setAuthCookies(
+    res: Response,
+    accessToken: string,
+    refreshToken: string,
+  ) {
+    res.cookie('access_token', accessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      path: '/api',
+      maxAge: this.ACCESS_TOKEN_MAX_AGE,
+    });
+
+    res.cookie('refresh_token', refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      path: '/api/auth',
+      maxAge: this.REFRESH_TOKEN_MAX_AGE,
+    });
+  }
+
+  private clearAuthCookies(res: Response) {
+    res.clearCookie('access_token', { path: '/api' });
+    res.clearCookie('refresh_token', { path: '/api/auth' });
+  }
 
   @Post('register')
   @Throttle({ default: { ttl: 60000, limit: 5 } })
@@ -27,7 +57,9 @@ export class AuthController {
     @Body() dto: RegisterDto,
     @Res({ passthrough: true }) res: Response,
   ) {
-    return this.authService.register(dto, res);
+    const result = await this.authService.register(dto);
+    this.setAuthCookies(res, result.accessToken, result.refreshToken);
+    return result.user;
   }
 
   @Post('login')
@@ -37,17 +69,22 @@ export class AuthController {
     @Body() dto: LoginDto,
     @Res({ passthrough: true }) res: Response,
   ) {
-    return this.authService.login(dto, res);
+    const result = await this.authService.login(dto);
+    this.setAuthCookies(res, result.accessToken, result.refreshToken);
+    return result.user;
   }
 
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { ttl: 60000, limit: 5 } })
   async refresh(
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
     const token = req.cookies?.refresh_token;
-    return this.authService.refresh(token, res);
+    const result = await this.authService.refresh(token);
+    this.setAuthCookies(res, result.accessToken, result.refreshToken);
+    return result.user;
   }
 
   @Post('logout')
@@ -57,7 +94,9 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response,
   ) {
     const refreshTokenStr = req.cookies?.refresh_token;
-    return this.authService.logout(refreshTokenStr, res);
+    const result = await this.authService.logout(refreshTokenStr);
+    this.clearAuthCookies(res);
+    return result;
   }
 
   @Get('me')

@@ -1,7 +1,7 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { useConnectionStore } from '@/lib/use-connection-status';
+import { usePollingQuery } from '@/lib/use-polling-query';
 import type {
   AnalyticsOverview,
   CompletionTrend,
@@ -42,13 +42,9 @@ async function fetchAlertFrequency(
 }
 
 export function useAnalyticsOverview() {
-  const wsStatus = useConnectionStore((s) => s.status);
-  const shouldPoll = wsStatus !== 'connected';
-
-  return useQuery({
+  return usePollingQuery({
     queryKey: ['analytics', 'overview'],
     queryFn: fetchOverview,
-    refetchInterval: shouldPoll ? 15_000 : false,
     staleTime: 30000,
   });
 }

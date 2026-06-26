@@ -10,6 +10,7 @@ import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { WsModule } from './modules/ws/ws.module';
 import { LocationModule } from './modules/locations/location.module';
 import { UploadModule } from './modules/upload/upload.module';
+import { EvidenceModule } from './modules/evidence/evidence.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { UploadModule } from './modules/upload/upload.module';
     WsModule,
     LocationModule,
     UploadModule,
+    EvidenceModule,
   ],
 })
 export class AppModule {}

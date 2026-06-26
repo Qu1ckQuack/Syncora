@@ -1,7 +1,9 @@
 import type { WorkOrderStatus } from './types';
 
 export const VALID_TRANSITIONS: Record<WorkOrderStatus, WorkOrderStatus[]> = {
-  PENDING: ['EN_ROUTE', 'DELAYED', 'CANCELLED'],
+  PENDING: ['ACCEPTED', 'DECLINED', 'DELAYED', 'CANCELLED'],
+  ACCEPTED: ['EN_ROUTE', 'DELAYED', 'CANCELLED'],
+  DECLINED: [],
   EN_ROUTE: ['IN_PROGRESS', 'DELAYED', 'CANCELLED'],
   IN_PROGRESS: ['COMPLETED', 'DELAYED', 'CANCELLED'],
   DELAYED: ['PENDING', 'EN_ROUTE', 'IN_PROGRESS', 'CANCELLED'],
@@ -10,7 +12,9 @@ export const VALID_TRANSITIONS: Record<WorkOrderStatus, WorkOrderStatus[]> = {
 };
 
 export const NEXT_STATUS: Record<WorkOrderStatus, WorkOrderStatus | null> = {
-  PENDING: 'EN_ROUTE',
+  PENDING: 'ACCEPTED',
+  ACCEPTED: 'EN_ROUTE',
+  DECLINED: null,
   EN_ROUTE: 'IN_PROGRESS',
   IN_PROGRESS: 'COMPLETED',
   DELAYED: 'EN_ROUTE',
@@ -23,8 +27,11 @@ export function getValidTransitions(
   role: string,
 ): WorkOrderStatus[] {
   let transitions = VALID_TRANSITIONS[status];
-  if (role !== 'MODERATOR') {
+  if (role !== 'HQ') {
     transitions = transitions.filter((s) => s !== 'CANCELLED');
+  }
+  if (role !== 'TECHNICIAN') {
+    transitions = transitions.filter((s) => s !== 'ACCEPTED' && s !== 'DECLINED');
   }
   return transitions;
 }

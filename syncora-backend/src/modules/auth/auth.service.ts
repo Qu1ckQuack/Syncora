@@ -8,7 +8,6 @@ import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { randomBytes, createHash } from 'crypto';
 import * as bcrypt from 'bcrypt';
-import { Response } from 'express';
 import { PrismaService } from '../../prisma/prisma.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
@@ -16,9 +15,6 @@ import { LoginDto } from './dto/login.dto';
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
-  // Hardcoded: Make token expiry configurable via env (JWT_ACCESS_EXPIRY / JWT_REFRESH_EXPIRY)
-  private readonly ACCESS_TOKEN_EXPIRY = 15 * 60 * 1000;
-  private readonly REFRESH_TOKEN_EXPIRY = 7 * 24 * 60 * 60 * 1000;
 
   constructor(
     private prisma: PrismaService,
@@ -39,7 +35,6 @@ export class AuthService {
       { sub: user.id, email: user.email, role: user.role },
       {
         secret: this.configService.get<string>('JWT_SECRET'),
-        // Hardcoded: Make configurable via env (JWT_ACCESS_EXPIRY)
         expiresIn: '15m',
       },
     );
@@ -53,45 +48,45 @@ export class AuthService {
       data: {
         token: hashed,
         userId,
-        expiresAt: new Date(Date.now() + this.REFRESH_TOKEN_EXPIRY),
+        expiresAt: new Date(
+          Date.now() + 7 * 24 * 60 * 60 * 1000,
+        ),
       },
     });
 
     return token;
   }
 
-  private setAuthCookies(
-    res: Response,
-    accessToken: string,
-    refreshToken: string,
-  ) {
-    res.cookie('access_token', accessToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      path: '/api',
-      maxAge: this.ACCESS_TOKEN_EXPIRY,
-    });
-
-    res.cookie('refresh_token', refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      path: '/api/auth',
-      maxAge: this.REFRESH_TOKEN_EXPIRY,
-    });
+  private sanitizeUser(user: {
+    id: string;
+    email: string;
+    name: string;
+    role: string;
+    technicianStatus?: string | null;
+    avatarUrl?: string | null;
+    createdAt?: Date;
+  }) {
+    return {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      ...(user.technicianStatus !== undefined
+        ? { technicianStatus: user.technicianStatus }
+        : {}),
+      ...(user.avatarUrl !== undefined
+        ? { avatarUrl: user.avatarUrl }
+        : {}),
+      ...(user.createdAt !== undefined
+        ? { createdAt: user.createdAt }
+        : {}),
+    };
   }
 
-  private clearAuthCookies(res: Response) {
-    res.clearCookie('access_token', { path: '/api' });
-    res.clearCookie('refresh_token', { path: '/api/auth' });
-  }
-
-  async register(dto: RegisterDto, res: Response) {
+  async register(dto: RegisterDto) {
     const existing = await this.prisma.user.findUnique({
       where: { email: dto.email },
     });
-
     if (existing) {
       throw new ConflictException('Email already registered');
     }
@@ -117,26 +112,18 @@ export class AuthService {
 
     const accessToken = this.generateAccessToken(user);
     const refreshToken = await this.generateRefreshToken(user.id);
-    this.setAuthCookies(res, accessToken, refreshToken);
 
     this.logger.log(`User registered: ${user.email}`);
-    return {
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      role: user.role,
-    };
+    return { user: this.sanitizeUser(user), accessToken, refreshToken };
   }
 
-  async login(dto: LoginDto, res: Response) {
+  async login(dto: LoginDto) {
     const user = await this.prisma.user.findUnique({
       where: { email: dto.email },
     });
-
     if (!user) {
       throw new UnauthorizedException('Invalid credentials');
     }
-
     if (!user.isActive) {
       throw new UnauthorizedException('Account is disabled');
     }
@@ -157,18 +144,12 @@ export class AuthService {
 
     const accessToken = this.generateAccessToken(user);
     const refreshToken = await this.generateRefreshToken(user.id);
-    this.setAuthCookies(res, accessToken, refreshToken);
 
     this.logger.log(`User logged in: ${user.email}`);
-    return {
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      role: user.role,
-    };
+    return { user: this.sanitizeUser(user), accessToken, refreshToken };
   }
 
-  async refresh(refreshTokenStr: string, res: Response) {
+  async refresh(refreshTokenStr: string) {
     if (!refreshTokenStr) {
       throw new UnauthorizedException('Refresh token missing');
     }
@@ -189,31 +170,35 @@ export class AuthService {
     const user = await this.prisma.user.findUnique({
       where: { id: storedToken.userId },
     });
-
     if (!user || !user.isActive) {
       throw new UnauthorizedException('User not found or inactive');
     }
 
-    const accessToken = this.generateAccessToken(user);
-    const newRefreshToken = await this.generateRefreshToken(user.id);
-    const hashedNewToken = this.hashToken(newRefreshToken);
+    const rawToken = randomBytes(40).toString('hex');
+    const hashedNewToken = this.hashToken(rawToken);
 
-    await this.prisma.refreshToken.update({
-      where: { id: storedToken.id },
-      data: { revoked: true, replacedByToken: hashedNewToken },
+    await this.prisma.$transaction(async (tx) => {
+      await tx.refreshToken.update({
+        where: { id: storedToken.id },
+        data: { revoked: true, replacedByToken: hashedNewToken },
+      });
+
+      await tx.refreshToken.create({
+        data: {
+          token: hashedNewToken,
+          userId: user.id,
+          expiresAt: new Date(
+            Date.now() + 7 * 24 * 60 * 60 * 1000,
+          ),
+        },
+      });
     });
 
-    this.setAuthCookies(res, accessToken, newRefreshToken);
-
-    return {
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      role: user.role,
-    };
+    const accessToken = this.generateAccessToken(user);
+    return { user: this.sanitizeUser(user), accessToken, refreshToken: rawToken };
   }
 
-  async logout(refreshTokenStr: string | undefined, res: Response) {
+  async logout(refreshTokenStr: string | undefined) {
     let userId: string | null = null;
 
     if (refreshTokenStr) {
@@ -242,7 +227,6 @@ export class AuthService {
       this.logger.log(`User logged out: ${userId}`);
     }
 
-    this.clearAuthCookies(res);
     return { message: 'Logged out successfully' };
   }
 

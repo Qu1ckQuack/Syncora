@@ -12,8 +12,11 @@ import type { NotificationType } from '@/lib/types';
 const typeIcons: Record<NotificationType, typeof Bell> = {
   JOB_ASSIGNED: UserCheck,
   EN_ROUTE: Navigation,
+  IN_PROGRESS: Navigation,
   DELAY_ALERT: AlertTriangle,
   JOB_COMPLETED: CheckCircle2,
+  CANCELLED: AlertTriangle,
+  DEALER_ASSIGNMENT: UserCheck,
   SYSTEM_ERROR: Info,
 };
 
@@ -82,7 +85,7 @@ export function AlertsPanel({ compact }: { compact?: boolean }) {
       </div>
       {unreadCount > 0 && (
         <button
-          onClick={() => markAllRead.mutate()}
+          onClick={() => markAllRead.mutate(undefined)}
           className="flex items-center gap-1 text-xs text-syncora-500 hover:underline"
         >
           <CheckCheck className="h-3.5 w-3.5" aria-hidden="true" />

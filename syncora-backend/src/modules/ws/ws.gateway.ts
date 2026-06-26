@@ -6,7 +6,7 @@ import {
   OnGatewayDisconnect,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
-import { Logger } from '@nestjs/common';
+import { Logger, OnModuleDestroy } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -23,7 +23,7 @@ interface JwtPayload {
     credentials: true,
   },
 })
-export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect {
+export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect, OnModuleDestroy {
   @WebSocketServer()
   server!: Server;
 
@@ -51,6 +51,13 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }, 60000);
   }
 
+  onModuleDestroy() {
+    if (this.rateLimitCleanupInterval) {
+      clearInterval(this.rateLimitCleanupInterval);
+      this.rateLimitCleanupInterval = null;
+    }
+  }
+
   private parseCookies(
     cookieHeader: string | undefined,
   ): Record<string, string> {
@@ -68,13 +75,25 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const token = cookies['access_token'];
 
     if (!token) {
-      this.logger.warn(`Socket connection rejected: no access_token`);
+      this.logger.warn('Socket connection rejected: no access_token');
       client.disconnect();
       return;
     }
 
     try {
       const payload = this.jwtService.verify<JwtPayload>(token);
+
+      const user = await this.prisma.user.findUnique({
+        where: { id: payload.sub },
+        select: { isActive: true },
+      });
+
+      if (!user || !user.isActive) {
+        this.logger.warn('Socket connection rejected: user inactive or not found');
+        client.disconnect();
+        return;
+      }
+
       client.data.user = {
         id: payload.sub,
         email: payload.email,
@@ -84,7 +103,7 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect {
       client.join(`role:${payload.role}`);
       this.logger.log(`Socket connected: ${payload.email} (${payload.role})`);
     } catch {
-      this.logger.warn(`Socket connection rejected: invalid token`);
+      this.logger.warn('Socket connection rejected: invalid token');
       client.disconnect();
     }
   }
@@ -129,7 +148,7 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect {
       },
     });
 
-    this.emitToRole('MODERATOR', 'location.update', location);
+    this.emitToRole('HQ', 'location.update', location);
 
     if (payload.workOrderId) {
       const order = await this.prisma.workOrder.findUnique({

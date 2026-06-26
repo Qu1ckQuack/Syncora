@@ -24,7 +24,7 @@ export class WorkOrderOwnershipGuard implements CanActivate {
       throw new NotFoundException('Work order not found');
     }
 
-    if (user.role === 'MODERATOR') return true;
+    if (user.role === 'HQ') return true;
     if (user.role === 'TECHNICIAN' && order.technicianId === user.id)
       return true;
     if (user.role === 'CUSTOMER' && order.customerId === user.id) return true;

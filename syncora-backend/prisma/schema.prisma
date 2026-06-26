@@ -8,9 +8,10 @@ datasource db {
 }
 
 enum Role {
-  MODERATOR
+  HQ
   TECHNICIAN
   CUSTOMER
+  DEALER
 }
 
 enum TechnicianStatus {
@@ -21,6 +22,8 @@ enum TechnicianStatus {
 
 enum WorkOrderStatus {
   PENDING
+  ACCEPTED
+  DECLINED
   EN_ROUTE
   IN_PROGRESS
   COMPLETED
@@ -42,24 +45,36 @@ enum NotificationType {
   DELAY_ALERT
   JOB_COMPLETED
   CANCELLED
+  DEALER_ASSIGNMENT
   SYSTEM_ERROR
 }
 
-model User {
-  id               String           @id @default(uuid())
-  email            String           @unique
-  passwordHash     String           @map("password_hash")
-  name             String
-  role             Role             @default(CUSTOMER)
-  technicianStatus TechnicianStatus? @map("technician_status")
-  avatarUrl        String?          @map("avatar_url")
-  isActive         Boolean          @default(true) @map("is_active")
-  createdAt        DateTime         @default(now()) @map("created_at")
-  updatedAt        DateTime         @updatedAt @map("updated_at")
+enum EvidenceType {
+  PHOTO
+  VIDEO
+}
 
-  workOrdersAsCustomer   WorkOrder[]  @relation("customer_orders")
-  workOrdersAsTechnician WorkOrder[]  @relation("technician_orders")
-  technicianLocations   TechnicianLocation[]
+model User {
+  id               String            @id @default(uuid())
+  email            String            @unique
+  passwordHash     String            @map("password_hash")
+  name             String
+  role             Role              @default(CUSTOMER)
+  technicianStatus TechnicianStatus? @map("technician_status")
+  avatarUrl        String?           @map("avatar_url")
+  phone            String?
+  address          String?
+  isActive         Boolean           @default(true) @map("is_active")
+  createdAt        DateTime          @default(now()) @map("created_at")
+  updatedAt        DateTime          @updatedAt @map("updated_at")
+
+  workOrdersAsCustomer   WorkOrder[]             @relation("customer_orders")
+  workOrdersAsTechnician WorkOrder[]             @relation("technician_orders")
+  evidenceAsTechnician   Evidence[]              @relation("technician_evidence")
+  ratingsAsCustomer      Rating[]                @relation("customer_ratings")
+  ratingsAsTechnician    Rating[]                @relation("technician_ratings")
+  messages               Message[]               @relation("sent_messages")
+  technicianLocations    TechnicianLocation[]
   statusChanges          StatusHistory[]
   notifications          Notification[]
   notificationPreference NotificationPreference?
@@ -89,12 +104,15 @@ model WorkOrder {
   createdAt      DateTime        @default(now()) @map("created_at")
   updatedAt      DateTime        @updatedAt @map("updated_at")
 
-  customer   User   @relation("customer_orders", fields: [customerId], references: [id])
-  technician User?  @relation("technician_orders", fields: [technicianId], references: [id])
+  customer   User  @relation("customer_orders", fields: [customerId], references: [id])
+  technician User? @relation("technician_orders", fields: [technicianId], references: [id])
 
   statusHistory       StatusHistory[]
   notifications       Notification[]
   technicianLocations TechnicianLocation[]
+  evidence            Evidence[]
+  ratings             Rating[]
+  conversations       Conversation[]
 
   @@index([customerId])
   @@index([technicianId])
@@ -103,14 +121,76 @@ model WorkOrder {
   @@map("work_orders")
 }
 
+model Evidence {
+  id           String       @id @default(uuid())
+  workOrderId  String       @map("work_order_id")
+  technicianId String       @map("technician_id")
+  url          String
+  type         EvidenceType
+  createdAt    DateTime     @default(now()) @map("created_at")
+
+  workOrder  WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  technician User      @relation("technician_evidence", fields: [technicianId], references: [id])
+
+  @@index([workOrderId])
+  @@index([technicianId])
+  @@map("evidence")
+}
+
+model Rating {
+  id           String   @id @default(uuid())
+  workOrderId  String   @map("work_order_id")
+  customerId   String   @map("customer_id")
+  technicianId String   @map("technician_id")
+  score        Int
+  comment      String?
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  workOrder  WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  customer   User      @relation("customer_ratings", fields: [customerId], references: [id])
+  technician User      @relation("technician_ratings", fields: [technicianId], references: [id])
+
+  @@unique([workOrderId, customerId])
+  @@index([technicianId])
+  @@map("ratings")
+}
+
+model Conversation {
+  id             String   @id @default(uuid())
+  workOrderId    String   @map("work_order_id")
+  participantIds String[] @map("participant_ids")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  workOrder WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  messages  Message[]
+
+  @@index([workOrderId])
+  @@map("conversations")
+}
+
+model Message {
+  id             String   @id @default(uuid())
+  conversationId String   @map("conversation_id")
+  senderId       String   @map("sender_id")
+  content        String
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User         @relation("sent_messages", fields: [senderId], references: [id])
+
+  @@index([conversationId])
+  @@index([senderId])
+  @@map("messages")
+}
+
 model StatusHistory {
-  id           String           @id @default(uuid())
-  workOrderId  String           @map("work_order_id")
-  fromStatus   WorkOrderStatus? @map("from_status")
-  toStatus     WorkOrderStatus  @map("to_status")
-  changedById  String           @map("changed_by_id")
-  note         String?
-  createdAt    DateTime         @default(now()) @map("created_at")
+  id          String           @id @default(uuid())
+  workOrderId String           @map("work_order_id")
+  fromStatus  WorkOrderStatus? @map("from_status")
+  toStatus    WorkOrderStatus  @map("to_status")
+  changedById String           @map("changed_by_id")
+  note        String?
+  createdAt   DateTime         @default(now()) @map("created_at")
 
   workOrder WorkOrder @relation(fields: [workOrderId], references: [id])
   changedBy User      @relation(fields: [changedById], references: [id])
@@ -140,13 +220,13 @@ model Notification {
 }
 
 model RefreshToken {
-  id             String   @id @default(uuid())
-  token          String   @unique
-  userId         String   @map("user_id")
-  expiresAt      DateTime @map("expires_at")
-  revoked        Boolean  @default(false)
-  replacedByToken String? @map("replaced_by_token")
-  createdAt      DateTime @default(now()) @map("created_at")
+  id              String   @id @default(uuid())
+  token           String   @unique
+  userId          String   @map("user_id")
+  expiresAt       DateTime @map("expires_at")
+  revoked         Boolean  @default(false)
+  replacedByToken String?  @map("replaced_by_token")
+  createdAt       DateTime @default(now()) @map("created_at")
 
   user User @relation(fields: [userId], references: [id])
 
@@ -156,15 +236,15 @@ model RefreshToken {
 }
 
 model TechnicianLocation {
-  id            String   @id @default(uuid())
-  technicianId  String   @map("technician_id")
-  workOrderId   String?  @map("work_order_id")
-  latitude      Float
-  longitude     Float
-  accuracy      Float?
-  timestamp     DateTime @default(now())
+  id           String   @id @default(uuid())
+  technicianId String   @map("technician_id")
+  workOrderId  String?  @map("work_order_id")
+  latitude     Float
+  longitude    Float
+  accuracy     Float?
+  timestamp    DateTime @default(now())
 
-  technician User      @relation(fields: [technicianId], references: [id])
+  technician User       @relation(fields: [technicianId], references: [id])
   workOrder  WorkOrder? @relation(fields: [workOrderId], references: [id])
 
   @@index([technicianId, timestamp])
@@ -184,7 +264,7 @@ model NotificationPreference {
   email      Boolean  @default(true)
   push       Boolean  @default(true)
   status     Boolean  @default(true)
-  assignment Boolean @default(true)
+  assignment Boolean  @default(true)
   createdAt  DateTime @default(now()) @map("created_at")
   updatedAt  DateTime @updatedAt @map("updated_at")
 

@@ -25,7 +25,7 @@ export class WorkOrdersController {
 
   @Post()
   @UseGuards(RolesGuard)
-  @Roles('MODERATOR', 'CUSTOMER')
+  @Roles('HQ', 'CUSTOMER', 'DEALER')
   create(
     @Body() dto: CreateWorkOrderDto,
     @CurrentUser() user: { id: string; role: string },
@@ -49,7 +49,7 @@ export class WorkOrdersController {
 
   @Patch(':id')
   @UseGuards(RolesGuard)
-  @Roles('MODERATOR')
+  @Roles('HQ')
   update(
     @Param('id') id: string,
     @Body() dto: UpdateWorkOrderDto,
@@ -60,13 +60,33 @@ export class WorkOrdersController {
 
   @Patch(':id/assign')
   @UseGuards(RolesGuard)
-  @Roles('MODERATOR')
+  @Roles('HQ')
   assign(
     @Param('id') id: string,
     @Body() dto: AssignWorkOrderDto,
     @CurrentUser('id') userId: string,
   ) {
     return this.workOrdersService.assign(id, dto, userId);
+  }
+
+  @Patch(':id/accept')
+  @UseGuards(RolesGuard, WorkOrderOwnershipGuard)
+  @Roles('TECHNICIAN')
+  accept(
+    @Param('id') id: string,
+    @CurrentUser() user: { id: string; role: string },
+  ) {
+    return this.workOrdersService.accept(id, user);
+  }
+
+  @Patch(':id/decline')
+  @UseGuards(RolesGuard, WorkOrderOwnershipGuard)
+  @Roles('TECHNICIAN')
+  decline(
+    @Param('id') id: string,
+    @CurrentUser() user: { id: string; role: string },
+  ) {
+    return this.workOrdersService.decline(id, user);
   }
 
   @Patch(':id/status')

@@ -2,6 +2,8 @@ import { cn } from '@/lib/utils';
 import {
   Loader2,
   Clock,
+  CircleCheck,
+  CircleX,
   Navigation,
   CheckCircle2,
   AlertTriangle,
@@ -16,6 +18,8 @@ import {
 type WorkOrderStatus =
   | 'IN_PROGRESS'
   | 'PENDING'
+  | 'ACCEPTED'
+  | 'DECLINED'
   | 'EN_ROUTE'
   | 'COMPLETED'
   | 'DELAYED'
@@ -29,6 +33,8 @@ const statusConfig: Record<
 > = {
   IN_PROGRESS: { icon: Loader2, label: 'In Progress', color: 'text-status-active' },
   PENDING: { icon: Clock, label: 'Pending', color: 'text-status-pending' },
+  ACCEPTED: { icon: CircleCheck, label: 'Accepted', color: 'text-emerald-600 dark:text-emerald-400' },
+  DECLINED: { icon: CircleX, label: 'Declined', color: 'text-red-600 dark:text-red-400' },
   EN_ROUTE: { icon: Navigation, label: 'En Route', color: 'text-status-transit' },
   COMPLETED: { icon: CheckCircle2, label: 'Completed', color: 'text-status-done' },
   DELAYED: { icon: AlertTriangle, label: 'Delayed', color: 'text-status-alert' },

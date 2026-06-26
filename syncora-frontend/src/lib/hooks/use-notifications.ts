@@ -1,7 +1,7 @@
 'use client';
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useConnectionStore } from '@/lib/use-connection-status';
+import { usePollingQuery, useInvalidatingMutation } from '@/lib/use-polling-query';
 import type { Notification, NotificationPreference } from '@/lib/types';
 
 async function fetchNotifications(): Promise<Notification[]> {
@@ -46,49 +46,33 @@ async function updatePreferences(data: Partial<NotificationPreference>): Promise
 }
 
 export function useNotifications() {
-  const wsStatus = useConnectionStore((s) => s.status);
-  const shouldPoll = wsStatus !== 'connected';
-
-  return useQuery({
+  return usePollingQuery({
     queryKey: ['notifications'],
     queryFn: fetchNotifications,
-    refetchInterval: shouldPoll ? 15_000 : false,
     staleTime: 60000,
   });
 }
 
 export function useUnreadCount() {
-  const wsStatus = useConnectionStore((s) => s.status);
-  const shouldPoll = wsStatus !== 'connected';
-
-  return useQuery({
+  return usePollingQuery({
     queryKey: ['notifications', 'unread-count'],
     queryFn: fetchUnreadCount,
-    refetchInterval: shouldPoll ? 15_000 : 30_000,
     staleTime: 10000,
-  });
+  }, 30_000);
 }
 
 export function useMarkRead() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (id: string) => markRead(id),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['notifications'] });
-      qc.invalidateQueries({ queryKey: ['notifications', 'unread-count'] });
-    },
-  });
+  return useInvalidatingMutation(markRead as (id: string) => Promise<unknown>, [
+    ['notifications'],
+    ['notifications', 'unread-count'],
+  ]);
 }
 
 export function useMarkAllRead() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: markAllRead,
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['notifications'] });
-      qc.invalidateQueries({ queryKey: ['notifications', 'unread-count'] });
-    },
-  });
+  return useInvalidatingMutation(markAllRead, [
+    ['notifications'],
+    ['notifications', 'unread-count'],
+  ]);
 }
 
 export function useNotificationPreferences() {

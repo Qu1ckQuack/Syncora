@@ -36,7 +36,7 @@ export default function WorkOrdersPage() {
             {filtered.length} of {orders?.length ?? 0} orders
           </p>
         </div>
-        {(user?.role === 'MODERATOR' || user?.role === 'CUSTOMER') && (
+        {(user?.role === 'HQ' || user?.role === 'CUSTOMER') && (
           <Link href="/dashboard/work-orders/new" className="flex items-center gap-2 rounded-md bg-syncora-500 px-4 py-2 text-sm font-medium text-white hover:bg-syncora-600 transition-colors">
             <Plus className="h-4 w-4" aria-hidden="true" />
             New Order

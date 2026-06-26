@@ -1,46 +1,62 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
-import { useConnectionStore } from '@/lib/use-connection-status';
-import type { TechnicianLocation } from '@/lib/types';
+import { usePollingQuery } from '@/lib/use-polling-query';
 
-async function fetchLatestByTechnician(technicianId: string): Promise<TechnicianLocation | null> {
-  const res = await fetch(`/api/locations/technician/${technicianId}`, { credentials: 'include' });
-  if (!res.ok) return null;
-  return res.json();
+interface TechnicianLocationRaw {
+  latitude: number;
+  longitude: number;
+  accuracy: number | null;
+  timestamp: string;
 }
 
-async function fetchAllTechnicianLocations(): Promise<(TechnicianLocation & { technician: { id: string; name: string } })[]> {
-  const res = await fetch('/api/users?role=TECHNICIAN', { credentials: 'include' });
+export interface TechnicianWithLocation {
+  id: string;
+  name: string;
+  technicianStatus: string | null;
+  latitude: number;
+  longitude: number;
+  accuracy: number | null;
+  timestamp: string | null;
+  technician: {
+    id: string;
+    name: string;
+    technicianStatus: string | null;
+  };
+}
+
+interface ApiResponseItem {
+  id: string;
+  name: string;
+  technicianStatus: string | null;
+  technicianLocations: TechnicianLocationRaw[];
+}
+
+async function fetchAllTechnicianLocations(): Promise<TechnicianWithLocation[]> {
+  const res = await fetch('/api/locations/technicians', { credentials: 'include' });
   if (!res.ok) return [];
-  const users: { id: string; name: string }[] = await res.json();
-  const locations = await Promise.all(
-    users.map(async (u) => {
-      const loc = await fetchLatestByTechnician(u.id);
-      return loc ? { ...loc, technician: u } : null;
-    }),
-  );
-  return locations.filter(Boolean) as (TechnicianLocation & { technician: { id: string; name: string } })[];
+  const data: ApiResponseItem[] = await res.json();
+  return data.map((item) => {
+    const loc = item.technicianLocations[0];
+    return {
+      id: item.id,
+      name: item.name,
+      technicianStatus: item.technicianStatus,
+      latitude: loc?.latitude ?? 0,
+      longitude: loc?.longitude ?? 0,
+      accuracy: loc?.accuracy ?? null,
+      timestamp: loc?.timestamp ?? null,
+      technician: {
+        id: item.id,
+        name: item.name,
+        technicianStatus: item.technicianStatus,
+      },
+    };
+  });
 }
 
 export function useTechnicianLocations() {
-  const wsStatus = useConnectionStore((s) => s.status);
-  const shouldPoll = wsStatus !== 'connected';
-
-  return useQuery({
+  return usePollingQuery({
     queryKey: ['locations', 'technicians'],
     queryFn: fetchAllTechnicianLocations,
-    refetchInterval: shouldPoll ? 15_000 : 30_000,
-  });
-}
-
-export function useTechnicianLocation(technicianId: string) {
-  const wsStatus = useConnectionStore((s) => s.status);
-  const shouldPoll = wsStatus !== 'connected';
-
-  return useQuery({
-    queryKey: ['locations', 'technician', technicianId],
-    queryFn: () => fetchLatestByTechnician(technicianId),
-    refetchInterval: shouldPoll ? 15_000 : 30_000,
-  });
+  }, 30_000);
 }

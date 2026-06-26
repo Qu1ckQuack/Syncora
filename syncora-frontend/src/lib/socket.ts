@@ -51,7 +51,7 @@ export function useSocket(onEvent?: () => void) {
       addToast({ type: 'success', title: 'Reconnected', duration: 2000 });
     };
 
-    const notifyAnd = (fn: () => void) => () => { fn(); notify(); };
+    const notifyAnd = <T,>(fn: (payload?: T) => void) => (payload?: T) => { fn(payload); notify(); };
 
     const onStatusChanged = notifyAnd(() => qc.invalidateQueries({ queryKey: ['work-orders'] }));
     const onAssigned = notifyAnd(() => {
@@ -68,6 +68,15 @@ export function useSocket(onEvent?: () => void) {
       if (currentUser?.role === 'CUSTOMER') return;
       qc.invalidateQueries({ queryKey: ['locations'] });
     });
+    const onEvidenceAdded = notifyAnd((payload?: { workOrderId?: string }) => {
+      qc.invalidateQueries({ queryKey: ['work-orders'] });
+      if (payload?.workOrderId) {
+        qc.invalidateQueries({ queryKey: ['work-orders', payload.workOrderId] });
+        qc.invalidateQueries({ queryKey: ['evidence', payload.workOrderId] });
+      } else {
+        qc.invalidateQueries({ queryKey: ['evidence'] });
+      }
+    });
 
     socket.on('connect', onConnect);
     socket.on('disconnect', onDisconnect);
@@ -77,6 +86,7 @@ export function useSocket(onEvent?: () => void) {
     socket.on('workOrder.assigned', onAssigned);
     socket.on('notification.new', onNotification);
     socket.on('location.update', onLocationUpdate);
+    socket.on('workOrder.evidenceAdded', onEvidenceAdded);
 
     if (socket.connected) setStatus('connected');
 
@@ -89,6 +99,7 @@ export function useSocket(onEvent?: () => void) {
       socket.off('workOrder.assigned', onAssigned);
       socket.off('notification.new', onNotification);
       socket.off('location.update', onLocationUpdate);
+      socket.off('workOrder.evidenceAdded', onEvidenceAdded);
     };
   }, [qc, addToast, handleStatusChange, setConnectionStatus]);
 

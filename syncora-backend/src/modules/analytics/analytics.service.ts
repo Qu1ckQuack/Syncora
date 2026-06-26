@@ -7,7 +7,7 @@ export class AnalyticsService {
 
   async getOverviewStats(user: { id: string; role: string }) {
     const where =
-      user.role === 'MODERATOR'
+      user.role === 'HQ'
         ? {}
         : user.role === 'TECHNICIAN'
           ? { technicianId: user.id }
@@ -71,7 +71,7 @@ export class AnalyticsService {
     user: { id: string; role: string },
   ) {
     const whereBase =
-      user.role === 'MODERATOR'
+      user.role === 'HQ'
         ? {}
         : user.role === 'TECHNICIAN'
           ? { technicianId: user.id }

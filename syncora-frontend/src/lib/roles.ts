@@ -1,6 +1,7 @@
 import {
   LayoutDashboard,
   ClipboardList,
+  ClipboardPlus,
   Users,
   Settings,
   UserCircle,
@@ -9,7 +10,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 
-export type UserRole = 'MODERATOR' | 'TECHNICIAN' | 'CUSTOMER';
+export type UserRole = 'HQ' | 'TECHNICIAN' | 'CUSTOMER' | 'DEALER';
 
 export interface NavItem {
   label: string;
@@ -24,44 +25,50 @@ export const navItems: NavItem[] = [
     label: 'Overview',
     href: '/dashboard/overview',
     icon: LayoutDashboard,
-    roles: ['MODERATOR', 'TECHNICIAN'],
+    roles: ['HQ', 'TECHNICIAN'],
   },
   {
     label: 'Work Orders',
     href: '/dashboard/work-orders',
     icon: ClipboardList,
-    roles: ['MODERATOR', 'TECHNICIAN', 'CUSTOMER'],
+    roles: ['HQ', 'TECHNICIAN', 'CUSTOMER', 'DEALER'],
     badge: 'pending',
+  },
+  {
+    label: 'New Order',
+    href: '/dashboard/work-orders/new',
+    icon: ClipboardPlus,
+    roles: ['HQ', 'CUSTOMER', 'DEALER'],
   },
   {
     label: 'Map',
     href: '/dashboard/map',
     icon: Map,
-    roles: ['MODERATOR', 'TECHNICIAN', 'CUSTOMER'],
+    roles: ['HQ', 'TECHNICIAN', 'CUSTOMER', 'DEALER'],
   },
   {
     label: 'Analytics',
     href: '/dashboard/analytics',
     icon: BarChart3,
-    roles: ['MODERATOR'],
+    roles: ['HQ'],
   },
   {
     label: 'People',
     href: '/dashboard/people',
     icon: Users,
-    roles: ['MODERATOR'],
+    roles: ['HQ'],
   },
   {
     label: 'System Settings',
     href: '/dashboard/settings',
     icon: Settings,
-    roles: ['MODERATOR'],
+    roles: ['HQ'],
   },
   {
     label: 'Profile',
     href: '/dashboard/profile',
     icon: UserCircle,
-    roles: ['MODERATOR', 'TECHNICIAN', 'CUSTOMER'],
+    roles: ['HQ', 'TECHNICIAN', 'CUSTOMER', 'DEALER'],
   },
 ];
 

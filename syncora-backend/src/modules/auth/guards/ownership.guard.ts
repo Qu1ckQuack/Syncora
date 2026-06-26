@@ -18,7 +18,7 @@ export class OwnershipGuard implements CanActivate {
       throw new ForbiddenException('Access denied');
     }
 
-    if (user.role === 'MODERATOR') {
+    if (user.role === 'HQ') {
       return true;
     }
 

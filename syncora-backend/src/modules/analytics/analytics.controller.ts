@@ -32,14 +32,14 @@ export class AnalyticsController {
 
   @Get('technicians')
   @UseGuards(RolesGuard)
-  @Roles('MODERATOR')
+  @Roles('HQ')
   getTechnicianPerformance() {
     return this.analyticsService.getTechnicianPerformance();
   }
 
   @Get('alerts')
   @UseGuards(RolesGuard)
-  @Roles('MODERATOR')
+  @Roles('HQ')
   getAlertFrequency(@Query('days') days?: string) {
     const parsed = parseInt(days || '30', 10);
     const safeDays = isNaN(parsed) ? 30 : Math.min(parsed, 365);

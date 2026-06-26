@@ -8,7 +8,6 @@ import {
   Param,
   Query,
   UseGuards,
-  ConflictException,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -28,14 +27,14 @@ export class UsersController {
 
   @Get()
   @UseGuards(RolesGuard)
-  @Roles('MODERATOR', 'TECHNICIAN')
+  @Roles('HQ', 'TECHNICIAN', 'DEALER')
   findAll(@Query('role') role?: string) {
     return this.usersService.findAll(role);
   }
 
   @Get(':id')
   @UseGuards(RolesGuard)
-  @Roles('MODERATOR', 'TECHNICIAN')
+  @Roles('HQ', 'TECHNICIAN', 'DEALER')
   findOne(@Param('id') id: string) {
     return this.usersService.findOne(id);
   }
@@ -69,28 +68,22 @@ export class UsersController {
 
   @Patch(':id')
   @UseGuards(RolesGuard)
-  @Roles('MODERATOR')
+  @Roles('HQ')
   updateUser(@Param('id') id: string, @Body() dto: UpdateUserDto) {
     return this.usersService.updateUser(id, dto);
   }
 
   @Patch(':id/status')
   @UseGuards(RolesGuard)
-  @Roles('MODERATOR')
+  @Roles('HQ')
   updateUserStatus(@Param('id') id: string, @Body() dto: UpdateUserStatusDto) {
     return this.usersService.updateUserStatus(id, dto);
   }
 
   @Delete(':id')
   @UseGuards(RolesGuard)
-  @Roles('MODERATOR')
+  @Roles('HQ')
   async deleteUser(@Param('id') id: string) {
-    const canDelete = await this.usersService.canDeleteUser(id);
-    if (!canDelete) {
-      throw new ConflictException(
-        'User has related records. Use soft ban instead.',
-      );
-    }
     await this.usersService.deleteUser(id);
     return { message: 'User deleted successfully' };
   }

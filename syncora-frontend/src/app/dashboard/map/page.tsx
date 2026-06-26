@@ -4,6 +4,7 @@ import dynamic from 'next/dynamic';
 import { useAuthStore } from '@/lib/auth-store';
 import { useWorkOrders } from '@/lib/hooks/use-work-orders';
 import { useTechnicianLocations } from '@/lib/hooks/use-locations';
+import type { Role } from '@/lib/types';
 import { useSocket } from '@/lib/socket';
 import { Skeleton } from '@/components/shared/Skeleton';
 
@@ -50,7 +51,7 @@ export default function MapPage() {
         <MapView
           workOrders={ordersWithCoords}
           technicians={technicians}
-          userRole={user?.role ?? 'CUSTOMER'}
+          userRole={user?.role as Role}
         />
       </div>
     </div>

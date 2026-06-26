@@ -10,31 +10,37 @@ import { CurrentUser } from '../../modules/auth/decorators/current-user.decorato
 export class LocationController {
   constructor(private locationService: LocationService) {}
 
+  @Get('technicians')
+  @Roles('HQ', 'DEALER', 'TECHNICIAN')
+  async getAllTechniciansWithLocation() {
+    return this.locationService.getAllTechniciansWithLatestLocation();
+  }
+
   @Get('technician/:id')
-  @Roles('MODERATOR')
+  @Roles('HQ')
   async getTechnicianLatest(@Param('id') id: string, @CurrentUser() user: { id: string; role: string }) {
-    if (user.role !== 'MODERATOR' && user.id !== id) {
+    if (user.role !== 'HQ' && user.id !== id) {
       throw new ForbiddenException('Access denied');
     }
     return this.locationService.getLatestByTechnician(id);
   }
 
   @Get('technician/:id/history')
-  @Roles('MODERATOR')
+  @Roles('HQ')
   async getTechnicianHistory(
     @Param('id') id: string,
     @CurrentUser() user: { id: string; role: string },
     @Query('from') from?: string,
     @Query('to') to?: string,
   ) {
-    if (user.role !== 'MODERATOR' && user.id !== id) {
+    if (user.role !== 'HQ' && user.id !== id) {
       throw new ForbiddenException('Access denied');
     }
     return this.locationService.getHistoryByTechnician(id, from, to);
   }
 
   @Get('work-order/:id')
-  @Roles('MODERATOR', 'TECHNICIAN', 'CUSTOMER')
+  @Roles('HQ', 'TECHNICIAN', 'CUSTOMER', 'DEALER')
   async getWorkOrderLocations(
     @Param('id') id: string,
     @CurrentUser() user: { id: string; role: string },

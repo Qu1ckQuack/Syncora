@@ -6,17 +6,35 @@ const prisma = new PrismaClient({
 });
 
 async function main() {
-  // Hardcoded: Make default seed password configurable via env (SEED_PASSWORD)
-  const hash = await bcrypt.hash('password123', 10);
+  const seedPassword = process.env.SEED_PASSWORD || 'dev-password-change-me';
+  if (!process.env.SEED_PASSWORD && process.env.NODE_ENV === 'production') {
+    throw new Error('SEED_PASSWORD environment variable must be set in production');
+  }
+  const hash = await bcrypt.hash(seedPassword, 10);
 
-  const moderator = await prisma.user.upsert({
-    where: { email: 'moderator@syncora.dev' },
+  const hq = await prisma.user.upsert({
+    where: { email: 'hq@syncora.dev' },
     update: {},
     create: {
-      email: 'moderator@syncora.dev',
+      email: 'hq@syncora.dev',
       passwordHash: hash,
-      name: 'Alice Moderator',
-      role: Role.MODERATOR,
+      name: 'Alice HQ',
+      role: Role.HQ,
+      phone: '+1 555 0100',
+      address: '100 Syncora HQ',
+    },
+  });
+
+  const dealer = await prisma.user.upsert({
+    where: { email: 'dealer@syncora.dev' },
+    update: {},
+    create: {
+      email: 'dealer@syncora.dev',
+      passwordHash: hash,
+      name: 'Dana Dealer',
+      role: Role.DEALER,
+      phone: '+1 555 0103',
+      address: '300 Dealer Ave',
     },
   });
 
@@ -29,6 +47,8 @@ async function main() {
       name: 'Bob Technician',
       role: Role.TECHNICIAN,
       technicianStatus: 'ONLINE',
+      phone: '+1 555 0101',
+      address: '200 Field Service Rd',
     },
   });
 
@@ -41,6 +61,8 @@ async function main() {
       name: 'Carol Technician',
       role: Role.TECHNICIAN,
       technicianStatus: 'BUSY',
+      phone: '+1 555 0102',
+      address: '201 Field Service Rd',
     },
   });
 
@@ -52,6 +74,8 @@ async function main() {
       passwordHash: hash,
       name: 'Dave Customer',
       role: Role.CUSTOMER,
+      phone: '+1 555 0201',
+      address: '123 Main St, Suite 300',
     },
   });
 
@@ -63,6 +87,8 @@ async function main() {
       passwordHash: hash,
       name: 'Eve Customer',
       role: Role.CUSTOMER,
+      phone: '+1 555 0202',
+      address: '456 Oak Ave',
     },
   });
 
@@ -191,14 +217,14 @@ async function main() {
       create: orderData,
     });
 
-      const baseTime = orderData.scheduledStart?.getTime() ?? Date.now();
+    const baseTime = orderData.scheduledStart?.getTime() ?? Date.now();
     for (const [index, entry] of statusHistory.entries()) {
       await prisma.statusHistory.create({
         data: {
           workOrderId: created.id,
           fromStatus: entry.fromStatus ?? undefined,
           toStatus: entry.toStatus,
-          changedById: entry.toStatus === WorkOrderStatus.PENDING ? moderator.id : (orderData.technicianId ?? moderator.id),
+          changedById: entry.toStatus === WorkOrderStatus.PENDING ? hq.id : (orderData.technicianId ?? hq.id),
           note: entry.note,
           createdAt: new Date(baseTime - (statusHistory.length - index) * 3600000),
         },
@@ -222,13 +248,14 @@ async function main() {
   }
 
   const auditEntries = [
-    { action: 'LOGIN', entityType: 'USER', entityId: moderator.id, userId: moderator.id },
+    { action: 'LOGIN', entityType: 'USER', entityId: hq.id, userId: hq.id },
+    { action: 'LOGIN', entityType: 'USER', entityId: dealer.id, userId: dealer.id },
     { action: 'LOGIN', entityType: 'USER', entityId: tech1.id, userId: tech1.id },
     { action: 'LOGIN', entityType: 'USER', entityId: customer1.id, userId: customer1.id },
-    { action: 'WORK_ORDER_CREATED', entityType: 'WORK_ORDER', entityId: allOrders.find(o => o.orderNumber === 'SYN-1001')!.id, userId: moderator.id },
-    { action: 'WORK_ORDER_CREATED', entityType: 'WORK_ORDER', entityId: allOrders.find(o => o.orderNumber === 'SYN-1002')!.id, userId: moderator.id },
-    { action: 'ASSIGNMENT', entityType: 'WORK_ORDER', entityId: allOrders.find(o => o.orderNumber === 'SYN-1001')!.id, userId: moderator.id, metadata: { technicianId: tech1.id } },
-    { action: 'ASSIGNMENT', entityType: 'WORK_ORDER', entityId: allOrders.find(o => o.orderNumber === 'SYN-1003')!.id, userId: moderator.id, metadata: { technicianId: tech2.id } },
+    { action: 'WORK_ORDER_CREATED', entityType: 'WORK_ORDER', entityId: allOrders.find(o => o.orderNumber === 'SYN-1001')!.id, userId: hq.id },
+    { action: 'WORK_ORDER_CREATED', entityType: 'WORK_ORDER', entityId: allOrders.find(o => o.orderNumber === 'SYN-1002')!.id, userId: hq.id },
+    { action: 'ASSIGNMENT', entityType: 'WORK_ORDER', entityId: allOrders.find(o => o.orderNumber === 'SYN-1001')!.id, userId: hq.id, metadata: { technicianId: tech1.id } },
+    { action: 'ASSIGNMENT', entityType: 'WORK_ORDER', entityId: allOrders.find(o => o.orderNumber === 'SYN-1003')!.id, userId: hq.id, metadata: { technicianId: tech2.id } },
     { action: 'STATUS_UPDATE', entityType: 'WORK_ORDER', entityId: allOrders.find(o => o.orderNumber === 'SYN-1004')!.id, userId: tech1.id, metadata: { from: 'IN_PROGRESS', to: 'COMPLETED' } },
   ];
 

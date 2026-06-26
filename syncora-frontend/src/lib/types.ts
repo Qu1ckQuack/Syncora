@@ -1,12 +1,30 @@
-export type Role = 'MODERATOR' | 'TECHNICIAN' | 'CUSTOMER';
+export type Role = 'HQ' | 'TECHNICIAN' | 'CUSTOMER' | 'DEALER';
 
 export type TechnicianStatus = 'ONLINE' | 'BUSY' | 'OFFLINE';
 
-export type WorkOrderStatus = 'PENDING' | 'EN_ROUTE' | 'IN_PROGRESS' | 'COMPLETED' | 'DELAYED' | 'CANCELLED';
+export type WorkOrderStatus =
+  | 'PENDING'
+  | 'ACCEPTED'
+  | 'DECLINED'
+  | 'EN_ROUTE'
+  | 'IN_PROGRESS'
+  | 'COMPLETED'
+  | 'DELAYED'
+  | 'CANCELLED';
 
 export type Priority = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
 
-export type NotificationType = 'JOB_ASSIGNED' | 'EN_ROUTE' | 'DELAY_ALERT' | 'JOB_COMPLETED' | 'SYSTEM_ERROR';
+export type EvidenceType = 'PHOTO' | 'VIDEO';
+
+export type NotificationType =
+  | 'JOB_ASSIGNED'
+  | 'EN_ROUTE'
+  | 'IN_PROGRESS'
+  | 'DELAY_ALERT'
+  | 'JOB_COMPLETED'
+  | 'CANCELLED'
+  | 'DEALER_ASSIGNMENT'
+  | 'SYSTEM_ERROR';
 
 export interface User {
   id: string;
@@ -15,12 +33,53 @@ export interface User {
   role: Role;
   technicianStatus: TechnicianStatus | null;
   avatarUrl: string | null;
+  phone?: string | null;
+  address?: string | null;
   isActive: boolean;
   createdAt: string;
   _count?: {
     workOrdersAsTechnician?: number;
     workOrdersAsCustomer?: number;
   };
+}
+
+export interface Evidence {
+  id: string;
+  workOrderId: string;
+  technicianId: string;
+  url: string;
+  type: EvidenceType;
+  createdAt: string;
+  technician?: Pick<User, 'id' | 'name'>;
+}
+
+export interface Rating {
+  id: string;
+  workOrderId: string;
+  customerId: string;
+  technicianId: string;
+  score: number;
+  comment: string | null;
+  createdAt: string;
+  customer?: Pick<User, 'id' | 'name'>;
+  technician?: Pick<User, 'id' | 'name'>;
+}
+
+export interface Conversation {
+  id: string;
+  workOrderId: string;
+  participantIds: string[];
+  createdAt: string;
+  messages?: Message[];
+}
+
+export interface Message {
+  id: string;
+  conversationId: string;
+  senderId: string;
+  content: string;
+  createdAt: string;
+  sender?: Pick<User, 'id' | 'name' | 'role'>;
 }
 
 export interface WorkOrder {
